@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Combo charts · css-charts</title>
+  <script>
+    (() => {
+      try {
+        const s = localStorage.getItem('css-charts-theme');
+        const pref = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = s === 'light' || s === 'dark' ? s : pref;
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../src/css-charts.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">css-charts</span>
+        <span class="brand-tag">combo</span>
+      </a>
+      <nav class="nav" aria-label="Demo">
+        <a href="index.html">Home</a>
+        <a href="bar.html">Bar</a>
+        <a href="line.html">Line</a>
+        <a href="combo.html" aria-current="page">Combo</a>
+        <a href="pie.html">Pie</a>
+        <a href="theme.html">Theme</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
+          <span class="theme-toggle-label">Dark</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="main">
+    <p class="eyebrow">ComposedChart · bar + line · dual Y-axis</p>
+    <h1 class="page-title">Combo charts</h1>
+    <p class="page-lede">
+      Mix is opt-in: keep <code>type: 'bar'</code> and add
+      <code>type: 'line'</code> on a series. The right Y-axis appears only if a
+      series has <code>axis: 'right'</code> — <code>minRight</code> /
+      <code>maxRight</code> are optional.
+    </p>
+
+    <section class="section">
+      <h2>Bar + line, same axis</h2>
+      <p>Traffic as bars, a trend line on the shared left scale.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">type: combo</p>
+            <h2 class="cc-title">UV bars · PV line</h2>
+          </div>
+        </header>
+        <div id="combo-same"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Dual axis</h2>
+      <p>
+        Left: page views (bars). Right: conversion rate (line).
+        Different domains, aligned categories.
+      </p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">axis: 'right'</p>
+            <h2 class="cc-title">Views + conversion</h2>
+          </div>
+        </header>
+        <div id="combo-dual"></div>
+      </div>
+    </section>
+
+    <section class="notes">
+      <h2>JSON → DOM</h2>
+      <pre class="snippet"><code>CssCharts.render(el, {
+  type: 'bar',
+  data: [ /* rows */ ],
+  series: [
+    { key: 'uv', label: 'UV' },
+    { key: 'pv', label: 'PV' },
+    { key: 'conv', label: 'Conv %', type: 'line', axis: 'right' },
+  ],
+});</code></pre>
+    </section>
+
+    <footer class="footer">
+      <a href="line.html">← Line</a>
+      <a href="index.html">Home</a>
+      <a href="pie.html">Pie →</a>
+    </footer>
+  </main>
+
+  <script src="../src/css-charts.js"></script>
+  <script src="demo.js"></script>
+  <script>
+    const data = [
+      { name: 'A', uv: 4000, pv: 2400, conv: 22 },
+      { name: 'B', uv: 3000, pv: 1398, conv: 28 },
+      { name: 'C', uv: 2000, pv: 4200, conv: 18 },
+      { name: 'D', uv: 2780, pv: 3908, conv: 31 },
+      { name: 'E', uv: 1890, pv: 4800, conv: 25 },
+      { name: 'F', uv: 2390, pv: 3800, conv: 27 },
+      { name: 'G', uv: 3490, pv: 4300, conv: 33 },
+    ];
+
+    CssCharts.render(document.getElementById('combo-same'), {
+      type: 'combo',
+      data: data,
+      series: [
+        { key: 'uv', label: 'UV', type: 'bar' },
+        { key: 'pv', label: 'PV', type: 'line', curve: 'smooth' },
+      ],
+      layout: 'simple',
+      max: 5000,
+      height: '280px',
+      ariaLabel: 'Combo chart of UV bars and PV line',
+      caption: 'UV bars and PV line',
+    });
+
+    CssCharts.render(document.getElementById('combo-dual'), {
+      type: 'combo',
+      data: data,
+      series: [
+        { key: 'uv', label: 'UV', type: 'bar' },
+        { key: 'pv', label: 'PV', type: 'bar' },
+        { key: 'conv', label: 'Conv %', type: 'line', axis: 'right', curve: 'smooth' },
+      ],
+      layout: 'group',
+      max: 5000,
+      maxRight: 40,
+      yTitle: 'Views',
+      yTitleRight: 'Conv %',
+      format: function (v) { return (v / 1000).toFixed(1) + 'k'; },
+      formatRight: function (v) { return v + '%'; },
+      height: '280px',
+      ariaLabel: 'Combo chart of page views and conversion rate',
+      caption: 'Page views (left) and conversion percent (right)',
+    });
+  </script>
+</body>
+</html>
