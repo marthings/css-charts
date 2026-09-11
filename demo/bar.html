@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Bar charts · css-charts</title>
+  <script>
+    (() => {
+      try {
+        const s = localStorage.getItem('css-charts-theme');
+        const pref = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = s === 'light' || s === 'dark' ? s : pref;
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../src/css-charts.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">css-charts</span>
+        <span class="brand-tag">bar</span>
+      </a>
+      <nav class="nav" aria-label="Demo">
+        <a href="index.html">Home</a>
+        <a href="bar.html" aria-current="page">Bar</a>
+        <a href="line.html">Line</a>
+        <a href="combo.html">Combo</a>
+        <a href="pie.html">Pie</a>
+        <a href="theme.html">Theme</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
+          <span class="theme-toggle-label">Dark</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="main">
+    <p class="eyebrow">Recharts-like · CartesianGrid · Legend · multi-series</p>
+    <h1 class="page-title">Bar charts</h1>
+    <p class="page-lede">
+      Same building blocks as Recharts <code>BarChart</code>: grid, axes, legend, tooltip-ready marks,
+      grouped / stacked / horizontal layouts — pure HTML + CSS. Optional
+      <code>CssCharts.renderBar()</code> emits the markup from a data array.
+      Hover or focus a bar for an <code>interestfor</code> tooltip (no click).
+    </p>
+
+    <!-- Simple -->
+    <section class="section">
+      <h2>Simple bar</h2>
+      <p>Single series · labels on hover · domain via <code>--cc-max</code>.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">Recharts · SimpleBarChart</p>
+            <h2 class="cc-title">Page views</h2>
+          </div>
+          <button type="button" class="cc-btn cc-btn--ghost" data-cc-bar-replay>Replay</button>
+        </header>
+        <div id="bar-simple"></div>
+      </div>
+    </section>
+
+    <!-- Grouped -->
+    <section class="section">
+      <h2>Grouped (mix) bar</h2>
+      <p>Multiple <code>data-series</code> per category · click legend to dim a series.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">Recharts · MixBarChart</p>
+            <h2 class="cc-title">UV vs PV</h2>
+          </div>
+          <button type="button" class="cc-btn cc-btn--ghost" data-cc-bar-replay>Replay</button>
+        </header>
+        <div id="bar-group"></div>
+      </div>
+    </section>
+
+    <!-- Stacked -->
+    <section class="section">
+      <h2>Stacked bar</h2>
+      <p><code>data-layout="stack"</code> — segments share a category column.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">Recharts · StackedBarChart</p>
+            <h2 class="cc-title">Stacked traffic</h2>
+          </div>
+          <button type="button" class="cc-btn cc-btn--ghost" data-cc-bar-replay>Replay</button>
+        </header>
+        <div id="bar-stack"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>100% stacked</h2>
+      <p><code>layout: 'stack'</code> + <code>stackType: '100%'</code> — share of the category.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">stackType: '100%'</p>
+            <h2 class="cc-title">Mix of traffic</h2>
+          </div>
+        </header>
+        <div id="bar-stack-pct"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Formatter, axis title, reference line</h2>
+      <p><code>format</code>, <code>yTitle</code>, <code>refLines</code>. Multi-series hover is a shared category tip.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">format · yTitle · refLines</p>
+            <h2 class="cc-title">Page views (k)</h2>
+          </div>
+        </header>
+        <div id="bar-fmt"></div>
+      </div>
+    </section>
+
+    <!-- Horizontal -->
+    <section class="section">
+      <h2>Horizontal bar</h2>
+      <p><code>data-layout="horizontal"</code> — category labels on the left, grow on X.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">Recharts · layout="vertical"</p>
+            <h2 class="cc-title">Horizontal ranking</h2>
+          </div>
+        </header>
+        <div id="bar-horizontal"></div>
+      </div>
+    </section>
+
+    <!-- Wave lab (legacy flair) -->
+    <section class="section">
+      <h2>Wave equalizer (CSS <code>sin()</code>)</h2>
+      <p>Playground flair kept as progressive CSS demo — not a Recharts feature.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">Lab</p>
+            <h2 class="cc-title">Signal by day</h2>
+          </div>
+          <div class="cc-modes" role="group" aria-label="Chart mode">
+            <button type="button" class="cc-mode is-active" data-cc-bar-mode="data" aria-pressed="true">Data</button>
+            <button type="button" class="cc-mode" data-cc-bar-mode="wave" aria-pressed="false">Wave</button>
+          </div>
+        </header>
+        <div class="cc-bar-legacy" id="demo-bar" data-mode="data" style="--cc-max: 100" aria-label="Bar chart wave demo">
+          <div class="cc-bar-y" aria-hidden="true">
+            <span style="--y: 0">100</span>
+            <span style="--y: 50">50</span>
+            <span style="--y: 100">0</span>
+          </div>
+          <div class="cc-bar-plot">
+            <div class="cc-bar-plot-data">
+              <button type="button" class="cc-bar-col" data-v="48" data-band="mid" data-label="Mon" interestfor="wave-tip-mon" style="anchor-name: --wave-tip-mon" aria-label="Monday, 48"><span class="cc-bar-fill"></span></button>
+              <button type="button" class="cc-bar-col" data-v="62" data-band="mid" data-label="Tue" interestfor="wave-tip-tue" style="anchor-name: --wave-tip-tue" aria-label="Tuesday, 62"><span class="cc-bar-fill"></span></button>
+              <button type="button" class="cc-bar-col" data-v="55" data-band="mid" data-label="Wed" interestfor="wave-tip-wed" style="anchor-name: --wave-tip-wed" aria-label="Wednesday, 55"><span class="cc-bar-fill"></span></button>
+              <button type="button" class="cc-bar-col" data-v="78" data-band="high" data-label="Thu" interestfor="wave-tip-thu" style="anchor-name: --wave-tip-thu" aria-label="Thursday, 78"><span class="cc-bar-fill"></span></button>
+              <button type="button" class="cc-bar-col" data-v="91" data-band="high" data-label="Fri" interestfor="wave-tip-fri" style="anchor-name: --wave-tip-fri" aria-label="Friday, 91"><span class="cc-bar-fill"></span></button>
+              <button type="button" class="cc-bar-col" data-v="70" data-band="mid" data-label="Sat" interestfor="wave-tip-sat" style="anchor-name: --wave-tip-sat" aria-label="Saturday, 70"><span class="cc-bar-fill"></span></button>
+              <button type="button" class="cc-bar-col" data-v="38" data-band="low" data-label="Sun" interestfor="wave-tip-sun" style="anchor-name: --wave-tip-sun" aria-label="Sunday, 38"><span class="cc-bar-fill"></span></button>
+            </div>
+            <div class="cc-bar-plot-x" aria-hidden="true">
+              <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+            </div>
+          </div>
+        </div>
+        <div class="cc-tips">
+          <div id="wave-tip-mon" popover="hint" class="cc-tip" style="position-anchor: --wave-tip-mon"><strong>Mon</strong><p>48 · data-v via attr()</p></div>
+          <div id="wave-tip-tue" popover="hint" class="cc-tip" style="position-anchor: --wave-tip-tue"><strong>Tue</strong><p>62 · sibling-index hue</p></div>
+          <div id="wave-tip-wed" popover="hint" class="cc-tip" style="position-anchor: --wave-tip-wed"><strong>Wed</strong><p>55 · interestfor tip</p></div>
+          <div id="wave-tip-thu" popover="hint" class="cc-tip" style="position-anchor: --wave-tip-thu"><strong>Thu</strong><p>78 · high band</p></div>
+          <div id="wave-tip-fri" popover="hint" class="cc-tip" style="position-anchor: --wave-tip-fri"><strong>Fri</strong><p>91 · peak day</p></div>
+          <div id="wave-tip-sat" popover="hint" class="cc-tip" style="position-anchor: --wave-tip-sat"><strong>Sat</strong><p>70 · wave uses sin()</p></div>
+          <div id="wave-tip-sun" popover="hint" class="cc-tip" style="position-anchor: --wave-tip-sun"><strong>Sun</strong><p>38 · low band</p></div>
+        </div>
+        <div class="cc-actions">
+          <button type="button" class="cc-btn cc-btn--primary" data-cc-bar-replay>Replay stagger</button>
+          <button type="button" class="cc-btn cc-btn--ghost" data-cc-bar-shuffle>Shuffle values</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="notes">
+      <h2>Data → markup</h2>
+      <pre class="snippet"><code>CssCharts.renderBar(el, {
+  data: [
+    { name: 'A', uv: 4000, pv: 2400 },
+    { name: 'B', uv: 3000, pv: 1398 },
+  ],
+  series: [
+    { key: 'uv', label: 'UV' },
+    { key: 'pv', label: 'PV' },
+  ],
+  layout: 'group', // simple | group | stack | horizontal
+  max: 4000,
+  tooltip: true, // interestfor + popover="hint" (default)
+});</code></pre>
+    </section>
+
+    <footer class="footer">
+      <a href="index.html">← Home</a>
+      <a href="line.html">Line charts →</a>
+    </footer>
+  </main>
+
+  <script src="../src/css-charts.js"></script>
+  <script src="demo.js"></script>
+  <script>
+    const pageData = [
+      { name: 'A', uv: 4000, pv: 2400, amt: 2400 },
+      { name: 'B', uv: 3000, pv: 1398, amt: 2210 },
+      { name: 'C', uv: 2000, pv: 9800, amt: 2290 },
+      { name: 'D', uv: 2780, pv: 3908, amt: 2000 },
+      { name: 'E', uv: 1890, pv: 4800, amt: 2181 },
+      { name: 'F', uv: 2390, pv: 3800, amt: 2500 },
+      { name: 'G', uv: 3490, pv: 4300, amt: 2100 },
+    ];
+    // Cap C for nicer simple/group demos (Recharts sample has outlier on pv)
+    const sample = pageData.map((r) => ({
+      ...r,
+      pv: Math.min(r.pv, 4800),
+    }));
+
+    CssCharts.renderBar(document.getElementById('bar-simple'), {
+      data: sample.map(({ name, uv }) => ({ name, uv })),
+      series: [{ key: 'uv', label: 'UV' }],
+      layout: 'simple',
+      max: 4000,
+      labels: true,
+      height: '260px',
+      ariaLabel: 'Bar chart of page views by page',
+      caption: 'Page views by page',
+    });
+
+    CssCharts.renderBar(document.getElementById('bar-group'), {
+      data: sample,
+      series: [
+        { key: 'uv', label: 'UV' },
+        { key: 'pv', label: 'PV' },
+      ],
+      layout: 'group',
+      max: 5000,
+      height: '280px',
+      ariaLabel: 'Grouped bar chart comparing UV and PV by page',
+      caption: 'UV and PV by page',
+    });
+
+    CssCharts.renderBar(document.getElementById('bar-stack'), {
+      data: sample.map(({ name, uv, pv }) => ({ name, uv, pv })),
+      series: [
+        { key: 'uv', label: 'UV' },
+        { key: 'pv', label: 'PV' },
+      ],
+      layout: 'stack',
+      height: '280px',
+      ariaLabel: 'Stacked bar chart of UV and PV by page',
+      caption: 'Stacked UV and PV by page',
+    });
+
+    CssCharts.renderBar(document.getElementById('bar-stack-pct'), {
+      data: sample.map(({ name, uv, pv }) => ({ name, uv, pv })),
+      series: [
+        { key: 'uv', label: 'UV' },
+        { key: 'pv', label: 'PV' },
+      ],
+      layout: 'stack',
+      stackType: '100%',
+      height: '280px',
+      ariaLabel: '100 percent stacked bar chart of UV and PV',
+      caption: 'Share of UV and PV by page',
+    });
+
+    CssCharts.renderBar(document.getElementById('bar-fmt'), {
+      data: sample,
+      series: [
+        { key: 'uv', label: 'UV', color: '#38bdf8' },
+        { key: 'pv', label: 'PV', color: '#34d399' },
+      ],
+      layout: 'group',
+      max: 5000,
+      yTitle: 'Views',
+      format: function (v) {
+        return (v / 1000).toFixed(1) + 'k';
+      },
+      refLines: [{ y: 4000, label: 'Target' }],
+      grid: 'xy',
+      height: '280px',
+      ariaLabel: 'Formatted grouped bar chart with target line',
+      caption: 'UV and PV in thousands with target',
+    });
+
+    CssCharts.renderBar(document.getElementById('bar-horizontal'), {
+      data: sample.slice(0, 5).map(({ name, uv, pv }) => ({ name, uv, pv })),
+      series: [
+        { key: 'uv', label: 'UV' },
+        { key: 'pv', label: 'PV' },
+      ],
+      layout: 'horizontal',
+      max: 5000,
+      height: '300px',
+      ariaLabel: 'Horizontal bar chart ranking UV and PV',
+      caption: 'Horizontal UV and PV ranking',
+    });
+
+    /* Wire Replay after charts exist (init may have run earlier on empty mounts) */
+    CssCharts.init();
+  </script>
+</body>
+</html>
