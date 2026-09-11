@@ -1,0 +1,30 @@
+{
+  "name": "css-charts",
+  "version": "0.4.0",
+  "description": "JSON → DOM charts (bar, line, combo, pie). Pure HTML/CSS paint — no SVG, no canvas. CssCharts.render() builds the markup from data.",
+  "license": "MIT",
+  "keywords": [
+    "css",
+    "charts",
+    "bar-chart",
+    "line-chart",
+    "pie-chart",
+    "html",
+    "data-visualization"
+  ],
+  "main": "src/css-charts.js",
+  "style": "src/css-charts.css",
+  "exports": {
+    ".": "./src/css-charts.js",
+    "./css-charts.css": "./src/css-charts.css",
+    "./css-charts.js": "./src/css-charts.js"
+  },
+  "files": [
+    "src/",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "serve": "powershell -File ./serve.ps1"
+  }
+}
