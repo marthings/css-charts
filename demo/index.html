@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="css-charts — pure HTML/CSS bar, line, and pie charts. JSON to DOM.">
+  <title>css-charts — pure HTML/CSS charts</title>
+  <script>
+    (() => {
+      try {
+        const s = localStorage.getItem('css-charts-theme');
+        const pref = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = s === 'light' || s === 'dark' ? s : pref;
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../src/css-charts.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">css-charts</span>
+        <span class="brand-tag">v0.4</span>
+      </a>
+      <nav class="nav" aria-label="Demo">
+        <a href="index.html" aria-current="page">Home</a>
+        <a href="bar.html">Bar</a>
+        <a href="line.html">Line</a>
+        <a href="combo.html">Combo</a>
+        <a href="pie.html">Pie</a>
+        <a href="theme.html">Theme</a>
+        <a href="../README.md">README</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
+          <span class="theme-toggle-label">Dark</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="main home">
+    <header class="hero">
+      <p class="eyebrow">Open source · pure HTML/CSS</p>
+      <h1>Charts from JSON, painted by CSS</h1>
+      <p class="lede">
+        <code>CssCharts.render()</code> turns data into DOM. Bar, line, combo, and pie —
+        no SVG, no canvas. Theme with custom properties.
+      </p>
+    </header>
+
+    <nav class="toc" aria-label="Demos">
+      <a href="bar.html">
+        <span class="toc-title">Bar</span>
+        <span class="toc-desc">Simple, grouped, stacked, horizontal</span>
+      </a>
+      <a href="line.html">
+        <span class="toc-title">Line</span>
+        <span class="toc-desc">Straight or smooth, area, multi-series</span>
+      </a>
+      <a href="combo.html">
+        <span class="toc-title">Combo</span>
+        <span class="toc-desc">Bar + line, optional right Y-axis</span>
+      </a>
+      <a href="pie.html">
+        <span class="toc-title">Pie</span>
+        <span class="toc-desc">Pie and donut via shape() arcs</span>
+      </a>
+      <a href="theme.html">
+        <span class="toc-title">Theme</span>
+        <span class="toc-desc">CSS variables, transparent by default</span>
+      </a>
+    </nav>
+
+    <section class="section preview-mini" aria-label="Live grouped bar preview">
+      <p class="section-kicker">Preview</p>
+      <h2 class="section-heading">Grouped bar</h2>
+      <div id="home-bar"></div>
+    </section>
+
+    <section class="section">
+      <p class="section-kicker">Model</p>
+      <h2 class="section-heading">JSON → DOM → CSS</h2>
+      <ul class="plain-list">
+        <li>
+          <strong>Bar / Line / Combo / Pie</strong>
+          <span><code>type</code> on <code>render()</code>; series and layout as options</span>
+        </li>
+        <li>
+          <strong>Tooltips</strong>
+          <span><code>interestfor</code> + <code>popover="hint"</code></span>
+        </li>
+        <li>
+          <strong>Accessibility</strong>
+          <span>Hidden data table, keyboard marks, focus rings</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <p class="section-kicker">Install</p>
+      <h2 class="section-heading">Two files</h2>
+      <pre class="snippet"><code>&lt;link rel="stylesheet" href="src/css-charts.css"&gt;
+&lt;script src="src/css-charts.js"&gt;&lt;/script&gt;
+&lt;div id="chart"&gt;&lt;/div&gt;
+&lt;script&gt;
+CssCharts.render(document.getElementById('chart'), {
+  type: 'bar',
+  data: [
+    { name: 'A', uv: 4000, pv: 2400 },
+    { name: 'B', uv: 3000, pv: 1398 },
+  ],
+  series: [
+    { key: 'uv', label: 'UV' },
+    { key: 'pv', label: 'PV' },
+  ],
+  layout: 'group',
+});
+&lt;/script&gt;</code></pre>
+    </section>
+
+    <footer class="footer">
+      <span>MIT</span>
+      <a href="bar.html">Bar</a>
+      <a href="line.html">Line</a>
+      <a href="combo.html">Combo</a>
+      <a href="pie.html">Pie</a>
+      <a href="../README.md">Docs</a>
+    </footer>
+  </main>
+
+  <script src="../src/css-charts.js"></script>
+  <script src="demo.js"></script>
+  <script>
+    CssCharts.render(document.getElementById('home-bar'), {
+      type: 'bar',
+      data: [
+        { name: 'A', uv: 4000, pv: 2400 },
+        { name: 'B', uv: 3000, pv: 1398 },
+        { name: 'C', uv: 2000, pv: 4200 },
+        { name: 'D', uv: 2780, pv: 3908 },
+        { name: 'E', uv: 1890, pv: 4800 },
+        { name: 'F', uv: 2390, pv: 3800 },
+        { name: 'G', uv: 3490, pv: 4300 },
+      ],
+      series: [
+        { key: 'uv', label: 'UV' },
+        { key: 'pv', label: 'PV' },
+      ],
+      layout: 'group',
+      max: 5000,
+      height: '220px',
+      ariaLabel: 'Grouped bar chart of UV and PV',
+      caption: 'UV and PV preview',
+    });
+  </script>
+</body>
+</html>
