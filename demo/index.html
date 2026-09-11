@@ -30,7 +30,7 @@
     <div class="site-header-inner">
       <a class="brand" href="index.html">
         <span class="brand-mark">css-charts</span>
-        <span class="brand-tag">v0.4</span>
+        <span class="brand-tag">v0.5</span>
       </a>
       <nav class="nav" aria-label="Demo">
         <a href="index.html" aria-current="page">Home</a>
@@ -38,6 +38,10 @@
         <a href="line.html">Line</a>
         <a href="combo.html">Combo</a>
         <a href="pie.html">Pie</a>
+        <a href="scatter.html">Scatter</a>
+        <a href="gauge.html">Gauge</a>
+        <a href="heatmap.html">Heat</a>
+        <a href="radar.html">Radar</a>
         <a href="theme.html">Theme</a>
         <a href="../README.md">README</a>
         <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
@@ -52,8 +56,8 @@
       <p class="eyebrow">Open source · pure HTML/CSS</p>
       <h1>Charts from JSON, painted by CSS</h1>
       <p class="lede">
-        <code>CssCharts.render()</code> turns data into DOM. Bar, line, combo, and pie —
-        no SVG, no canvas. Theme with custom properties.
+        <code>CssCharts.render()</code> turns data into DOM. Bar, line, combo, pie,
+        scatter, gauge, heatmap, and radar — no SVG, no canvas. Theme with custom properties.
       </p>
     </header>
 
@@ -73,6 +77,22 @@
       <a href="pie.html">
         <span class="toc-title">Pie</span>
         <span class="toc-desc">Pie and donut via shape() arcs</span>
+      </a>
+      <a href="scatter.html">
+        <span class="toc-title">Scatter</span>
+        <span class="toc-desc">Numeric X/Y, same dots as line</span>
+      </a>
+      <a href="gauge.html">
+        <span class="toc-title">Gauge</span>
+        <span class="toc-desc">Horseshoe or ring from pie wedges</span>
+      </a>
+      <a href="heatmap.html">
+        <span class="toc-title">Heatmap</span>
+        <span class="toc-desc">CSS grid, color-mix intensity</span>
+      </a>
+      <a href="radar.html">
+        <span class="toc-title">Radar</span>
+        <span class="toc-desc">Polar polygons via shape()</span>
       </a>
       <a href="theme.html">
         <span class="toc-title">Theme</span>
@@ -133,6 +153,10 @@ CssCharts.render(document.getElementById('chart'), {
       <a href="line.html">Line</a>
       <a href="combo.html">Combo</a>
       <a href="pie.html">Pie</a>
+      <a href="scatter.html">Scatter</a>
+      <a href="gauge.html">Gauge</a>
+      <a href="heatmap.html">Heat</a>
+      <a href="radar.html">Radar</a>
       <a href="../README.md">Docs</a>
     </footer>
   </main>

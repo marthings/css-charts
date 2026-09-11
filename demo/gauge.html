@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Gauge charts · css-charts</title>
+  <script>
+    (() => {
+      try {
+        const s = localStorage.getItem('css-charts-theme');
+        const pref = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = s === 'light' || s === 'dark' ? s : pref;
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../src/css-charts.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">css-charts</span>
+        <span class="brand-tag">gauge</span>
+      </a>
+      <nav class="nav" aria-label="Demo">
+        <a href="index.html">Home</a>
+        <a href="bar.html">Bar</a>
+        <a href="line.html">Line</a>
+        <a href="combo.html">Combo</a>
+        <a href="pie.html">Pie</a>
+        <a href="scatter.html">Scatter</a>
+        <a href="gauge.html" aria-current="page">Gauge</a>
+        <a href="heatmap.html">Heat</a>
+        <a href="radar.html">Radar</a>
+        <a href="theme.html">Theme</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
+          <span class="theme-toggle-label">Dark</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="main" tabindex="-1">
+    <p class="eyebrow">JSON → DOM · pieWedgeShape arc · no needle</p>
+    <h1 class="page-title">Gauge charts</h1>
+    <p class="page-lede">
+      One value on a track. Same <code>border-shape: shape()</code> kiles as pie.
+      Default is a 270° horseshoe (<code>startAngle: -135</code>, <code>endAngle: 135</code>).
+    </p>
+
+    <section class="section">
+      <h2>Horseshoe</h2>
+      <p>Default sweep. Center shows the value.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">type: 'gauge'</p>
+            <h2 class="cc-title">CPU load</h2>
+          </div>
+        </header>
+        <div id="gauge-horse"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Full ring</h2>
+      <p><code>startAngle: 0</code>, <code>endAngle: 360</code>.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">360°</p>
+            <h2 class="cc-title">Storage used</h2>
+          </div>
+        </header>
+        <div id="gauge-ring"></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <a href="scatter.html">← Scatter</a>
+      <a href="index.html">Home</a>
+      <a href="heatmap.html">Heat →</a>
+    </footer>
+  </main>
+  <script src="../src/css-charts.js"></script>
+  <script src="demo.js"></script>
+  <script>
+    CssCharts.render(document.getElementById('gauge-horse'), {
+      type: 'gauge',
+      data: [{ name: 'CPU', value: 72 }],
+      max: 100,
+      ariaLabel: 'CPU load 72 percent',
+    });
+    CssCharts.render(document.getElementById('gauge-ring'), {
+      type: 'gauge',
+      data: [{ name: 'Disk', value: 48 }],
+      startAngle: 0,
+      endAngle: 360,
+      max: 100,
+      format: function (v) { return v + '%'; },
+      ariaLabel: 'Disk usage 48 percent',
+    });
+  </script>
+</body>
+</html>

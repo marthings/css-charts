@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Scatter charts · css-charts</title>
+  <script>
+    (() => {
+      try {
+        const s = localStorage.getItem('css-charts-theme');
+        const pref = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = s === 'light' || s === 'dark' ? s : pref;
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../src/css-charts.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">css-charts</span>
+        <span class="brand-tag">scatter</span>
+      </a>
+      <nav class="nav" aria-label="Demo">
+        <a href="index.html">Home</a>
+        <a href="bar.html">Bar</a>
+        <a href="line.html">Line</a>
+        <a href="combo.html">Combo</a>
+        <a href="pie.html">Pie</a>
+        <a href="scatter.html" aria-current="page">Scatter</a>
+        <a href="gauge.html">Gauge</a>
+        <a href="heatmap.html">Heat</a>
+        <a href="radar.html">Radar</a>
+        <a href="theme.html">Theme</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
+          <span class="theme-toggle-label">Dark</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="main" tabindex="-1">
+    <p class="eyebrow">JSON → DOM · numeric X · same dots as line</p>
+    <h1 class="page-title">Scatter charts</h1>
+    <p class="page-lede">
+      Wide-form data like line: <code>xKey</code> plus one column per series.
+      No ribbon — just <code>.cc-line-dot</code> on a cartesian frame.
+    </p>
+
+    <section class="section">
+      <h2>Two series</h2>
+      <p><code>type: 'scatter'</code> · numeric X and Y.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">xKey + series keys</p>
+            <h2 class="cc-title">Reach vs conversion</h2>
+          </div>
+        </header>
+        <div id="scatter-multi"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Single series</h2>
+      <p>One <code>series</code> key. Grid defaults to <code>xy</code>.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">one series</p>
+            <h2 class="cc-title">Sample cloud</h2>
+          </div>
+        </header>
+        <div id="scatter-one"></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <a href="pie.html">← Pie</a>
+      <a href="index.html">Home</a>
+      <a href="gauge.html">Gauge →</a>
+    </footer>
+  </main>
+  <script src="../src/css-charts.js"></script>
+  <script src="demo.js"></script>
+  <script>
+    const cloud = [
+      { x: 12, uv: 40, pv: 22 },
+      { x: 18, uv: 28, pv: 48 },
+      { x: 24, uv: 55, pv: 31 },
+      { x: 31, uv: 36, pv: 62 },
+      { x: 38, uv: 71, pv: 44 },
+      { x: 45, uv: 50, pv: 70 },
+      { x: 52, uv: 63, pv: 38 },
+      { x: 61, uv: 44, pv: 81 },
+      { x: 70, uv: 78, pv: 52 },
+      { x: 82, uv: 58, pv: 66 },
+    ];
+    CssCharts.render(document.getElementById('scatter-multi'), {
+      type: 'scatter',
+      data: cloud,
+      xKey: 'x',
+      series: [
+        { key: 'uv', label: 'UV' },
+        { key: 'pv', label: 'PV' },
+      ],
+      max: 100,
+      height: '280px',
+      ariaLabel: 'Scatter plot of UV and PV against x',
+    });
+    CssCharts.render(document.getElementById('scatter-one'), {
+      type: 'scatter',
+      data: cloud.map(({ x, uv }) => ({ x, uv })),
+      xKey: 'x',
+      series: [{ key: 'uv', label: 'UV' }],
+      max: 100,
+      height: '240px',
+      ariaLabel: 'Single series scatter plot',
+    });
+  </script>
+</body>
+</html>

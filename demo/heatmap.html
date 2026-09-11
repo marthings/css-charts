@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Heatmap · css-charts</title>
+  <script>
+    (() => {
+      try {
+        const s = localStorage.getItem('css-charts-theme');
+        const pref = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = s === 'light' || s === 'dark' ? s : pref;
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../src/css-charts.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">css-charts</span>
+        <span class="brand-tag">heat</span>
+      </a>
+      <nav class="nav" aria-label="Demo">
+        <a href="index.html">Home</a>
+        <a href="bar.html">Bar</a>
+        <a href="line.html">Line</a>
+        <a href="combo.html">Combo</a>
+        <a href="pie.html">Pie</a>
+        <a href="scatter.html">Scatter</a>
+        <a href="gauge.html">Gauge</a>
+        <a href="heatmap.html" aria-current="page">Heat</a>
+        <a href="radar.html">Radar</a>
+        <a href="theme.html">Theme</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
+          <span class="theme-toggle-label">Dark</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="main" tabindex="-1">
+    <p class="eyebrow">JSON → DOM · CSS grid · color-mix</p>
+    <h1 class="page-title">Heatmap</h1>
+    <p class="page-lede">
+      Cells are buttons. Intensity is <code>--cc-t</code> 0–1 mixed into <code>--cc-s1</code>.
+      Missing x/y pairs stay empty.
+    </p>
+
+    <section class="section">
+      <h2>Week × hour</h2>
+      <p><code>xKey</code> / <code>yKey</code> / <code>valueKey</code>.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">type: 'heatmap'</p>
+            <h2 class="cc-title">Deployments</h2>
+          </div>
+        </header>
+        <div id="heat-week"></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <a href="gauge.html">← Gauge</a>
+      <a href="index.html">Home</a>
+      <a href="radar.html">Radar →</a>
+    </footer>
+  </main>
+  <script src="../src/css-charts.js"></script>
+  <script src="demo.js"></script>
+  <script>
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const hours = ['9', '10', '11', '12', '13', '14', '15', '16'];
+    const seed = [
+      2, 4, 8, 6, 3, 1, 0,
+      3, 7, 9, 8, 5, 2, 1,
+      4, 8, 10, 9, 6, 2, 1,
+      5, 9, 8, 7, 4, 1, 0,
+      3, 6, 7, 8, 5, 2, 1,
+      2, 4, 5, 6, 4, 3, 2,
+      1, 2, 3, 4, 3, 2, 1,
+      1, 1, 2, 2, 1, 1, 0,
+    ];
+    const data = [];
+    hours.forEach((h, yi) => {
+      days.forEach((d, xi) => {
+        data.push({ x: d, y: h, value: seed[yi * days.length + xi] });
+      });
+    });
+    CssCharts.render(document.getElementById('heat-week'), {
+      type: 'heatmap',
+      data: data,
+      xKey: 'x',
+      yKey: 'y',
+      valueKey: 'value',
+      ariaLabel: 'Heatmap of deployments by weekday and hour',
+    });
+  </script>
+</body>
+</html>

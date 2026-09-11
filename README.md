@@ -2,7 +2,7 @@
 
 **JSON data → correct DOM. CSS paints the chart.**
 
-Pure HTML/CSS **bar**, **line**, **combo** (bar+line), and **pie/donut** charts (Recharts-inspired composition). No SVG, no canvas, no D3, no progressive fallbacks. Geometry uses modern CSS including `clip-path: shape()` (lines) and `border-shape: shape()` (pie arcs).
+Pure HTML/CSS **bar**, **line**, **combo**, **pie/donut**, **scatter**, **gauge**, **heatmap**, and **radar** charts (Recharts-inspired composition). No SVG, no canvas, no D3, no progressive fallbacks. Geometry uses modern CSS including `clip-path: shape()` (lines, radar) and `border-shape: shape()` (pie/gauge arcs).
 
 ```
 data (JSON / array)  ── CssCharts.render() ──►  DOM  ── CSS ──►  chart
@@ -24,13 +24,13 @@ data (JSON / array)  ── CssCharts.render() ──►  DOM  ── CSS ──
   ];
 
   CssCharts.render(document.getElementById('chart'), {
-    type: 'bar',           // 'bar' | 'line' | 'combo' | 'pie'
+    type: 'bar',           // 'bar' | 'line' | 'combo' | 'pie' | 'scatter' | 'gauge' | 'heatmap' | 'radar'
     data: data,            // array of row objects, or a JSON string
     series: [
       { key: 'uv', label: 'UV' },
       { key: 'pv', label: 'PV' },
     ],
-    layout: 'group',       // bar only: simple | group | stack | horizontal
+    layout: 'group',       // bar: simple | group | stack | horizontal | range | waterfall
     max: 10000,            // optional; inferred if omitted
     tooltip: true,         // interestfor tips (default)
   });
@@ -150,10 +150,10 @@ CssCharts.render(el, { type: 'bar', data: json, series: [{ key: 'uv' }] });
 
 | Option | Default | Notes |
 | --- | --- | --- |
-| `type` | `'bar'` | `'bar'` \| `'line'` \| `'combo'` \| `'pie'` (`render` only) |
+| `type` | `'bar'` | `'bar'` \| `'line'` \| `'combo'` \| `'pie'` \| `'scatter'` \| `'gauge'` \| `'heatmap'` \| `'radar'` |
 | `data` | required | array or JSON string |
 | `series` | required for bar/line/combo | `{ key, label?, type?, axis?, area? }[]` — combo: `type` `'bar'`\|`'line'`, `axis` `'left'`\|`'right'` |
-| `layout` | auto | bar/combo: `simple` \| `group` \| `stack` (combo is vertical; `horizontal` ignored) |
+| `layout` | auto | bar: `simple` \| `group` \| `stack` \| `horizontal` \| `range` \| `waterfall` (combo ignores horizontal/range/waterfall) |
 | `max` / `min` | inferred / `0` | left domain (stacked bar infers `max` from **row sums**) |
 | `maxRight` / `minRight` | inferred / `0` | right Y-axis domain (combo, when any series has `axis: 'right'`) |
 | `ticksRight` | same as `ticks` | tick count on the right axis |
@@ -174,13 +174,18 @@ CssCharts.render(el, { type: 'bar', data: json, series: [{ key: 'uv' }] });
 | `curve` | `'straight'` | line: `'straight'` \| `'smooth'` (or `true`/`false`) |
 | `dots` | `true` | line: show point buttons |
 | `lineWidth` | `0.9` | line ribbon half-thickness (% of plot height) |
+| `xKey` / `yKey` | `'x'` / `'y'` | scatter (and heatmap x/y). Scatter also uses `series[].key` as Y columns |
+| `minX` / `maxX` | `0` / inferred | scatter X domain |
+| `startAngle` / `endAngle` | `-135` / `135` | gauge sweep, degrees, 0 at top clockwise |
+| `startKey` / `endKey` | `'start'` / `'end'` | on a series when `layout: 'range'` |
+| `valueKey` | `'value'` | gauge / heatmap cell value |
 
 ## Features vs Recharts (bar & line)
 
 | Recharts | css-charts |
 | --- | --- |
 | `data={[…]}` | `data` array / JSON → DOM |
-| `BarChart` / `LineChart` / `ComposedChart` / `PieChart` | `type: 'bar' \| 'line' \| 'combo' \| 'pie'` |
+| `BarChart` / `LineChart` / `ComposedChart` / `PieChart` / `ScatterChart` / `RadialBar` | `type: 'bar' \| 'line' \| 'combo' \| 'pie' \| 'scatter' \| 'gauge' \| 'heatmap' \| 'radar'` |
 | `YAxis orientation="right"` | `axis: 'right'` + `maxRight` / `minRight` |
 | `CartesianGrid` / axes / legend | emitted automatically |
 | `Tooltip` | `interestfor` + `popover="hint"` |
@@ -206,6 +211,10 @@ Same as `npx serve . -l 8090`. Works on macOS, Windows, and Linux.
 | `demo/line.html` | Line / area modes |
 | `demo/combo.html` | Bar + line, dual Y-axis |
 | `demo/pie.html` | Pie + donut (`border-shape` + `shape()` arcs) |
+| `demo/scatter.html` | Numeric X/Y scatter |
+| `demo/gauge.html` | Horseshoe + full-ring gauge |
+| `demo/heatmap.html` | CSS grid heatmap |
+| `demo/radar.html` | Polar polygons |
 | `demo/theme.html` | **CSS-var theming** (Ocean, Aurora, Paper, Neon) |
 
 ## Theming (CSS variables)

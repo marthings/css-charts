@@ -37,6 +37,10 @@
         <a href="line.html">Line</a>
         <a href="combo.html">Combo</a>
         <a href="pie.html">Pie</a>
+        <a href="scatter.html">Scatter</a>
+        <a href="gauge.html">Gauge</a>
+        <a href="heatmap.html">Heat</a>
+        <a href="radar.html">Radar</a>
         <a href="theme.html">Theme</a>
         <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
           <span class="theme-toggle-label">Dark</span>
@@ -198,6 +202,34 @@
       </div>
     </section>
 
+    <section class="section">
+      <h2>Range</h2>
+      <p><code>layout: 'range'</code> — horizontal span from <code>startKey</code> to <code>endKey</code>.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">layout: 'range'</p>
+            <h2 class="cc-title">Sprint window</h2>
+          </div>
+        </header>
+        <div id="bar-range"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Waterfall</h2>
+      <p><code>layout: 'waterfall'</code> — running baseline. <code>total: true</code> pins a column to zero.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">layout: 'waterfall'</p>
+            <h2 class="cc-title">Cash bridge</h2>
+          </div>
+        </header>
+        <div id="bar-waterfall"></div>
+      </div>
+    </section>
+
     <section class="notes">
       <h2>Data → markup</h2>
       <pre class="snippet"><code>CssCharts.renderBar(el, {
@@ -305,6 +337,34 @@
       height: '280px',
       ariaLabel: 'Formatted grouped bar chart with target line',
       caption: 'UV and PV in thousands with target',
+    });
+
+    CssCharts.renderBar(document.getElementById('bar-range'), {
+      data: [
+        { name: 'Design', start: 1, end: 6 },
+        { name: 'Build', start: 5, end: 14 },
+        { name: 'QA', start: 12, end: 18 },
+        { name: 'Launch', start: 17, end: 21 },
+      ],
+      series: [{ startKey: 'start', endKey: 'end', label: 'Days' }],
+      layout: 'range',
+      max: 21,
+      height: '220px',
+      ariaLabel: 'Range chart of sprint phases',
+    });
+
+    CssCharts.renderBar(document.getElementById('bar-waterfall'), {
+      data: [
+        { name: 'Start', value: 100, total: true },
+        { name: 'Sales', value: 40 },
+        { name: 'Costs', value: -25 },
+        { name: 'Tax', value: -10 },
+        { name: 'End', total: true },
+      ],
+      series: [{ key: 'value', label: 'Cash' }],
+      layout: 'waterfall',
+      height: '260px',
+      ariaLabel: 'Waterfall chart of cash',
     });
 
     CssCharts.renderBar(document.getElementById('bar-horizontal'), {

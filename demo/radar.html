@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Radar charts · css-charts</title>
+  <script>
+    (() => {
+      try {
+        const s = localStorage.getItem('css-charts-theme');
+        const pref = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = s === 'light' || s === 'dark' ? s : pref;
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../src/css-charts.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">css-charts</span>
+        <span class="brand-tag">radar</span>
+      </a>
+      <nav class="nav" aria-label="Demo">
+        <a href="index.html">Home</a>
+        <a href="bar.html">Bar</a>
+        <a href="line.html">Line</a>
+        <a href="combo.html">Combo</a>
+        <a href="pie.html">Pie</a>
+        <a href="scatter.html">Scatter</a>
+        <a href="gauge.html">Gauge</a>
+        <a href="heatmap.html">Heat</a>
+        <a href="radar.html" aria-current="page">Radar</a>
+        <a href="theme.html">Theme</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
+          <span class="theme-toggle-label">Dark</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="main" tabindex="-1">
+    <p class="eyebrow">JSON → DOM · polarPct · clip-path: shape()</p>
+    <h1 class="page-title">Radar charts</h1>
+    <p class="page-lede">
+      Same row shape as line: each row is an axis, each series is a polygon.
+      Fill via <code>clip-path: shape()</code>, vertices are buttons.
+    </p>
+
+    <section class="section">
+      <h2>Two series</h2>
+      <p>Click the legend to dim a ship.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">type: 'radar'</p>
+            <h2 class="cc-title">Loadout</h2>
+          </div>
+        </header>
+        <div id="radar-multi"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Single series</h2>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">one polygon</p>
+            <h2 class="cc-title">Profile</h2>
+          </div>
+        </header>
+        <div id="radar-one"></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <a href="heatmap.html">← Heat</a>
+      <a href="index.html">Home</a>
+      <a href="theme.html">Theme →</a>
+    </footer>
+  </main>
+  <script src="../src/css-charts.js"></script>
+  <script src="demo.js"></script>
+  <script>
+    const stats = [
+      { name: 'Speed', a: 80, b: 55 },
+      { name: 'Power', a: 60, b: 90 },
+      { name: 'Range', a: 70, b: 40 },
+      { name: 'Armor', a: 45, b: 75 },
+      { name: 'Utility', a: 85, b: 50 },
+    ];
+    CssCharts.render(document.getElementById('radar-multi'), {
+      type: 'radar',
+      data: stats,
+      series: [
+        { key: 'a', label: 'Ship A' },
+        { key: 'b', label: 'Ship B' },
+      ],
+      max: 100,
+      ariaLabel: 'Radar chart comparing two loadouts',
+    });
+    CssCharts.render(document.getElementById('radar-one'), {
+      type: 'radar',
+      data: stats.map(({ name, a }) => ({ name, a })),
+      series: [{ key: 'a', label: 'Ship A' }],
+      max: 100,
+      ariaLabel: 'Radar chart of a single profile',
+    });
+  </script>
+</body>
+</html>

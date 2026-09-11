@@ -263,6 +263,46 @@
     };
   }
 
+  /** Value → % from the left of the plot content box (min = 0%, max = 100%). */
+  function xAtScale(min, max) {
+    const domain = max - min || 1;
+    return function (v) {
+      return ((Number(v) - min) / domain) * 100;
+    };
+  }
+
+  function numericDomain(data, keys) {
+    const values = [];
+    const list = keys || [];
+    data.forEach(function (row) {
+      list.forEach(function (k) {
+        const n = rawNum(row[k]);
+        if (n != null) values.push(n);
+      });
+    });
+    return values;
+  }
+
+  function xAxisNumericHtml(ticks, min, max, opts) {
+    if (isSparkline(opts)) return '';
+    const at = xAtScale(min, max);
+    return (
+      '<div class="cc-x-axis cc-x-axis--numeric" aria-hidden="true">' +
+      ticks
+        .map(function (t) {
+          return (
+            '<span class="cc-x-tick" style="--x:' +
+            round2(at(t)) +
+            '%">' +
+            escapeHtml(formatValue(t, opts, 'left')) +
+            '</span>'
+          );
+        })
+        .join('') +
+      '</div>'
+    );
+  }
+
   function yAxisHtml(ticks, side, opts) {
     if (isSparkline(opts)) return '';
     const n = ticks.length;
@@ -334,7 +374,9 @@
   }
 
   function setSeriesOff(chart, key, off) {
-    const marks = chart.querySelectorAll('.cc-bar, .cc-line-layer, .cc-pie-slice');
+    const marks = chart.querySelectorAll(
+      '.cc-bar, .cc-line-layer, .cc-pie-slice, .cc-scatter-layer, .cc-radar-layer'
+    );
     for (let i = 0; i < marks.length; i++) {
       const el = marks[i];
       if (el.getAttribute('data-series') !== key) continue;
@@ -376,7 +418,15 @@
           ? 'Pie chart data'
           : (opts && opts.type) === 'combo'
             ? 'Combo chart data'
-            : 'Bar chart data');
+            : (opts && opts.type) === 'scatter'
+              ? 'Scatter chart data'
+              : (opts && opts.type) === 'gauge'
+                ? 'Gauge chart data'
+                : (opts && opts.type) === 'heatmap'
+                  ? 'Heatmap data'
+                  : (opts && opts.type) === 'radar'
+                    ? 'Radar chart data'
+                    : 'Bar chart data');
     const head =
       '<thead><tr><th scope="col">' +
       escapeHtml((opts && opts.categoryLabel) || 'Category') +
@@ -466,7 +516,15 @@
           ? 'Pie chart'
           : kind === 'combo'
             ? 'Combo chart'
-            : 'Bar chart';
+            : kind === 'scatter'
+              ? 'Scatter chart'
+              : kind === 'gauge'
+                ? 'Gauge chart'
+                : kind === 'heatmap'
+                  ? 'Heatmap'
+                  : kind === 'radar'
+                    ? 'Radar chart'
+                    : 'Bar chart';
     const label =
       (opts && opts.ariaLabel) || (opts && opts.caption) || fallback;
     el.setAttribute('role', 'group');
@@ -578,6 +636,20 @@
       parts.push(c);
     });
     parts.push('line to ' + x1 + '% 100%', 'close');
+    return 'shape(' + parts.join(', ') + ')';
+  }
+
+  function closedPolygonShape(pts) {
+    if (!pts.length) return 'shape(from 50% 50%, close)';
+    const parts = [
+      'from ' + round2(pts[0].x) + '% ' + round2(pts[0].y) + '%',
+    ];
+    for (let i = 1; i < pts.length; i++) {
+      parts.push(
+        'line to ' + round2(pts[i].x) + '% ' + round2(pts[i].y) + '%'
+      );
+    }
+    parts.push('close');
     return 'shape(' + parts.join(', ') + ')';
   }
 
@@ -864,13 +936,17 @@
     const next = Object.assign({}, opts, { data: data, type: type });
 
     if (type === 'pie') return renderPie(el, next);
+    if (type === 'gauge') return renderGauge(el, next);
+    if (type === 'heatmap') return renderHeatmap(el, next);
+    if (type === 'scatter') return renderScatter(el, next);
+    if (type === 'radar') return renderRadar(el, next);
     if (wantsCombo(opts.series, type)) return renderCombo(el, next);
     if (type === 'line') return renderLine(el, next);
     if (type === 'bar') return renderBar(el, next);
     throw new Error(
       'css-charts: unknown type "' +
         type +
-        '" (use "bar", "line", "pie", or "combo")'
+        '" (use "bar", "line", "pie", "combo", "scatter", "gauge", "heatmap", or "radar")'
     );
   }
 
@@ -1244,6 +1320,302 @@
     return { total: total, slices: slices, el: el };
   }
 
+  function clamp01(n) {
+    if (n < 0) return 0;
+    if (n > 1) return 1;
+    return n;
+  }
+
+  function renderGauge(el, opts) {
+    if (!el || !opts) return null;
+    const data = normalizeData(opts.data);
+    const row = data[0] || {};
+    const valueKey = opts.valueKey || 'value';
+    const raw = rawNum(row[valueKey] != null ? row[valueKey] : opts.value);
+    if (raw == null) return clearChart(el);
+
+    const min = finiteMin(opts);
+    const max = finiteMax(opts, [raw], min);
+    const t = clamp01((raw - min) / (max - min || 1));
+    const startAngle = opts.startAngle != null ? Number(opts.startAngle) : -135;
+    const endAngle = opts.endAngle != null ? Number(opts.endAngle) : 135;
+    let span = endAngle - startAngle;
+    if (span <= 0) span += 360;
+    const valueEnd = startAngle + t * span;
+    const innerFrac =
+      opts.innerRadius != null
+        ? Math.min(0.9, Math.max(0, Number(opts.innerRadius)))
+        : 0.62;
+    const outerR = 49.5;
+    const innerR = outerR * innerFrac;
+    const useTips = opts.tooltip !== false;
+    const base = tipBaseId(el);
+    const name = row.name != null ? String(row.name) : opts.ariaLabel || 'Value';
+    const shown = formatValue(raw, opts, 'left');
+    const colorDecl = seriesColorDecl(0, (opts.series && opts.series[0]) || {});
+    const id = base + '-g';
+    const tipParts = [];
+
+    const trackShape = pieWedgeShape(startAngle, startAngle + span, {
+      radius: outerR,
+      innerRadius: innerR,
+    });
+    const valueShape = pieWedgeShape(startAngle, valueEnd, {
+      radius: outerR,
+      innerRadius: innerR,
+    });
+
+    if (useTips) {
+      tipParts.push(
+        buildInterestTip(id, {
+          title: name,
+          value: shown,
+          colorDecl: colorDecl,
+        }).tipHtml
+      );
+    }
+
+    const valueBtn =
+      '<button type="button" class="cc-pie-slice cc-gauge-value" data-series="value" data-v="' +
+      raw +
+      '" style="--cc-slice-shape: ' +
+      valueShape +
+      '; ' +
+      colorDecl +
+      (useTips ? '; anchor-name: --' + id : '') +
+      '"' +
+      ' aria-label="' +
+      escapeHtml(name) +
+      ': ' +
+      escapeHtml(shown) +
+      '"' +
+      (useTips
+        ? ' interestfor="' +
+          escapeHtml(id) +
+          '" aria-describedby="' +
+          escapeHtml(id) +
+          '"'
+        : '') +
+      '></button>';
+
+    const track =
+      '<div class="cc-pie-slice cc-gauge-track" aria-hidden="true" style="--cc-slice-shape: ' +
+      trackShape +
+      '"></div>';
+
+    const showCenter = opts.centerLabel !== false;
+    const centerHtml = showCenter
+      ? '<div class="cc-pie-center" aria-hidden="true">' +
+        '<strong>' +
+        escapeHtml(shown) +
+        '</strong>' +
+        '<span>' +
+        escapeHtml(
+          opts.centerLabel != null &&
+            opts.centerLabel !== true &&
+            opts.centerLabel !== false
+            ? String(opts.centerLabel)
+            : name
+        ) +
+        '</span></div>'
+      : '';
+
+    const srTable =
+      opts.srTable === false
+        ? ''
+        : dataTableHtml(
+            [{ name: name, value: raw }],
+            [{ key: 'value', label: 'Value' }],
+            Object.assign({}, opts, { type: 'gauge', caption: name })
+          );
+
+    const tips =
+      useTips && tipParts.length
+        ? '<div class="cc-tips">' + tipParts.join('') + '</div>'
+        : '';
+
+    el.classList.add('cc-chart');
+    el.setAttribute('data-type', 'gauge');
+    el.setAttribute('data-donut', '');
+    applyChartA11y(el, opts, 'gauge');
+    if (opts.size) el.style.setProperty('--cc-pie-size', opts.size);
+    if (opts.height) el.style.setProperty('--cc-h', opts.height);
+
+    el.innerHTML =
+      srTable +
+      '<div class="cc-pie cc-gauge">' +
+      '<div class="cc-pie-plot is-donut">' +
+      track +
+      valueBtn +
+      centerHtml +
+      '</div></div>' +
+      tips;
+
+    const plot = el.querySelector('.cc-pie-plot');
+    if (plot && typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function () {
+        plot.classList.add('is-running');
+      });
+    } else if (plot) {
+      plot.classList.add('is-running');
+    }
+
+    return { value: raw, min: min, max: max, el: el };
+  }
+
+  function uniqueInOrder(data, key) {
+    const out = [];
+    data.forEach(function (row) {
+      const v = row[key];
+      if (v == null) return;
+      const s = String(v);
+      if (out.indexOf(s) === -1) out.push(s);
+    });
+    return out;
+  }
+
+  function renderHeatmap(el, opts) {
+    if (!el || !opts) return null;
+    const data = normalizeData(opts.data);
+    if (!data.length) return clearChart(el);
+
+    const xKey = opts.xKey || 'x';
+    const yKey = opts.yKey || 'y';
+    const valueKey = opts.valueKey || 'value';
+    const xs = uniqueInOrder(data, xKey);
+    const ys = uniqueInOrder(data, yKey);
+    if (!xs.length || !ys.length) return clearChart(el);
+
+    const lookup = {};
+    data.forEach(function (row) {
+      lookup[String(row[xKey]) + '\0' + String(row[yKey])] = row;
+    });
+
+    const vals = numericDomain(data, [valueKey]);
+    const min = opts.min != null ? Number(opts.min) : Math.min.apply(Math, vals);
+    const max = finiteMax(opts, vals, min);
+    const span = max - min || 1;
+    const useTips = opts.tooltip !== false;
+    const base = tipBaseId(el);
+    const tipParts = [];
+    const fillMissing = opts.fill === 0 || opts.fill === '0';
+
+    const cells = [];
+    ys.forEach(function (y, yi) {
+      xs.forEach(function (x, xi) {
+        const row = lookup[x + '\0' + y];
+        const raw = row ? rawNum(row[valueKey]) : fillMissing ? 0 : null;
+        const id = base + '-h-' + yi + '-' + xi;
+        if (raw == null) {
+          cells.push(
+            '<span class="cc-heat-cell cc-heat-cell--empty" aria-hidden="true"></span>'
+          );
+          return;
+        }
+        const t = clamp01((raw - min) / span);
+        const shown = formatValue(raw, opts, 'left');
+        if (useTips) {
+          tipParts.push(
+            buildInterestTip(id, {
+              title: x + ' · ' + y,
+              value: shown,
+            }).tipHtml
+          );
+        }
+        cells.push(
+          '<button type="button" class="cc-heat-cell" data-v="' +
+            raw +
+            '" style="--cc-t:' +
+            round2(t) +
+            (useTips ? ';anchor-name: --' + id : '') +
+            '" aria-label="' +
+            escapeHtml(x) +
+            ', ' +
+            escapeHtml(y) +
+            ': ' +
+            escapeHtml(shown) +
+            '"' +
+            (useTips
+              ? ' interestfor="' +
+                escapeHtml(id) +
+                '" aria-describedby="' +
+                escapeHtml(id) +
+                '"'
+              : '') +
+            '></button>'
+        );
+      });
+    });
+
+    const xLabels = xs
+      .map(function (x) {
+        return (
+          '<span class="cc-heat-tick">' + escapeHtml(x) + '</span>'
+        );
+      })
+      .join('');
+    const yLabels = ys
+      .map(function (y) {
+        return (
+          '<span class="cc-heat-tick">' + escapeHtml(y) + '</span>'
+        );
+      })
+      .join('');
+
+    const scale =
+      '<div class="cc-heat-scale" aria-hidden="true">' +
+      '<span>' +
+      escapeHtml(formatValue(min, opts, 'left')) +
+      '</span>' +
+      '<span class="cc-heat-scale-bar"></span>' +
+      '<span>' +
+      escapeHtml(formatValue(max, opts, 'left')) +
+      '</span></div>';
+
+    const srTable =
+      opts.srTable === false
+        ? ''
+        : dataTableHtml(
+            data,
+            [
+              { key: xKey, label: xKey },
+              { key: yKey, label: yKey },
+              { key: valueKey, label: 'Value' },
+            ],
+            Object.assign({}, opts, { type: 'heatmap', nameKey: xKey })
+          );
+
+    const tips =
+      useTips && tipParts.length
+        ? '<div class="cc-tips">' + tipParts.join('') + '</div>'
+        : '';
+
+    el.classList.add('cc-chart');
+    el.setAttribute('data-type', 'heatmap');
+    applyChartA11y(el, opts, 'heatmap');
+    el.style.setProperty('--cc-heat-cols', String(xs.length));
+    el.style.setProperty('--cc-heat-rows', String(ys.length));
+    if (opts.height) el.style.setProperty('--cc-h', opts.height);
+
+    el.innerHTML =
+      srTable +
+      '<div class="cc-heat">' +
+      '<div class="cc-heat-corner" aria-hidden="true"></div>' +
+      '<div class="cc-heat-x" aria-hidden="true">' +
+      xLabels +
+      '</div>' +
+      '<div class="cc-heat-y" aria-hidden="true">' +
+      yLabels +
+      '</div>' +
+      '<div class="cc-heat-grid">' +
+      cells.join('') +
+      '</div></div>' +
+      scale +
+      tips;
+
+    return { el: el, min: min, max: max };
+  }
+
   let tipSeq = 0;
 
   function tipBaseId(el) {
@@ -1348,6 +1720,8 @@
     const nameKey = opts.nameKey || 'name';
     const layout =
       opts.layout || (opts.series.length > 1 ? 'group' : 'simple');
+    if (layout === 'range') return renderBarRange(el, opts);
+    if (layout === 'waterfall') return renderBarWaterfall(el, opts);
     const percent = isPercentStack(opts, layout);
     const min = percent ? 0 : finiteMin(opts);
     const max = percent
@@ -1547,6 +1921,339 @@
     }
 
     return { max: max, stagger: function () { staggerPlot(plot); }, el: el };
+  }
+
+  function offsetBarButton(opts) {
+    const useTips = opts.useTips;
+    const id = opts.id;
+    const colorDecl = opts.colorDecl;
+    const name = opts.name;
+    const seriesLabel = opts.seriesLabel;
+    const seriesKey = opts.seriesKey;
+    const shown = opts.shown;
+    const v = opts.v;
+    const offset = opts.offset;
+    const interest = useTips
+      ? ' interestfor="' + escapeHtml(id) + '"'
+      : '';
+    const describedby = useTips
+      ? ' aria-describedby="' + escapeHtml(id) + '"'
+      : '';
+    const styleParts = [colorDecl];
+    if (useTips) styleParts.push('anchor-name: --' + id);
+    return (
+      '<button type="button" class="cc-bar" data-series="' +
+      escapeHtml(seriesKey) +
+      '" data-v="' +
+      round2(v) +
+      '" data-offset="' +
+      round2(offset) +
+      '" data-label="' +
+      escapeHtml(name) +
+      '" style="' +
+      styleParts.join('; ') +
+      '" aria-label="' +
+      escapeHtml(name) +
+      ', ' +
+      escapeHtml(seriesLabel) +
+      ': ' +
+      escapeHtml(shown) +
+      '"' +
+      describedby +
+      interest +
+      '>' +
+      '<span class="cc-bar-fill" aria-hidden="true"></span>' +
+      '<span class="cc-bar-value" aria-hidden="true">' +
+      escapeHtml(shown) +
+      '</span></button>'
+    );
+  }
+
+  function renderBarRange(el, opts) {
+    const data = normalizeData(opts.data);
+    if (!data.length) return clearChart(el);
+    const nameKey = opts.nameKey || 'name';
+    const series = (opts.series && opts.series.length
+      ? opts.series
+      : [{ startKey: 'start', endKey: 'end', key: 'range', label: 'Range' }]
+    ).map(function (s, i) {
+      const copy = Object.assign({}, s);
+      copy.startKey = s.startKey || 'start';
+      copy.endKey = s.endKey || 'end';
+      copy.key = s.key || copy.startKey + '-' + copy.endKey;
+      copy._si = i;
+      return copy;
+    });
+
+    const ends = [];
+    data.forEach(function (row) {
+      series.forEach(function (s) {
+        const a = rawNum(row[s.startKey]);
+        const b = rawNum(row[s.endKey]);
+        if (a != null) ends.push(a);
+        if (b != null) ends.push(b);
+      });
+    });
+    const min = opts.min != null ? Number(opts.min) : Math.min.apply(Math, [0].concat(ends));
+    const max = finiteMax(opts, ends, min);
+    const ticks = yTicks(max, opts.ticks || 5, min);
+    const spark = isSparkline(opts);
+    const showLegend =
+      opts.legend === true ||
+      (!spark && opts.legend !== false && series.length > 1);
+    const useTips = opts.tooltip !== false && !spark;
+    const base = tipBaseId(el);
+    const tipParts = [];
+
+    const cats = data
+      .map(function (row, i) {
+        const name = row[nameKey] != null ? row[nameKey] : 'Item ' + (i + 1);
+        const bars = series
+          .map(function (s) {
+            const start = rawNum(row[s.startKey]);
+            const end = rawNum(row[s.endKey]);
+            if (start == null || end == null) return '';
+            const lo = Math.min(start, end);
+            const hi = Math.max(start, end);
+            const span = hi - lo;
+            const seriesLabel = s.label || s.key;
+            const id = base + '-r-' + i + '-' + safeIdPart(s.key);
+            const colorDecl = seriesColorDecl(s._si, s);
+            const shown =
+              formatValue(lo, opts, 'left') +
+              '–' +
+              formatValue(hi, opts, 'left');
+            if (useTips) {
+              tipParts.push(
+                buildInterestTip(id, {
+                  title: String(name),
+                  series: s.key,
+                  seriesLabel: seriesLabel,
+                  value: shown,
+                  colorDecl: colorDecl,
+                }).tipHtml
+              );
+            }
+            return offsetBarButton({
+              useTips: useTips,
+              id: id,
+              colorDecl: colorDecl,
+              name: String(name),
+              seriesLabel: seriesLabel,
+              seriesKey: s.key,
+              shown: shown,
+              v: span,
+              offset: lo,
+            });
+          })
+          .join('');
+        return (
+          '<div class="cc-cat" data-label="' +
+          escapeHtml(String(name)) +
+          '">' +
+          '<span class="cc-cat-label" aria-hidden="true">' +
+          escapeHtml(String(name)) +
+          '</span>' +
+          '<div class="cc-cat-bars">' +
+          bars +
+          '</div></div>'
+        );
+      })
+      .join('');
+
+    const legend = showLegend
+      ? legendHtml(series, Object.assign({}, opts, { legend: true }))
+      : '';
+    const tips =
+      useTips && tipParts.length
+        ? '<div class="cc-tips">' + tipParts.join('') + '</div>'
+        : '';
+    const srTable =
+      opts.srTable === false
+        ? ''
+        : dataTableHtml(
+            data,
+            series.map(function (s) {
+              return { key: s.endKey, label: s.label || s.key };
+            }),
+            Object.assign({}, opts, { type: 'bar' })
+          );
+
+    el.classList.add('cc-chart');
+    el.setAttribute('data-type', 'bar');
+    el.setAttribute('data-layout', 'range');
+    applyChartA11y(el, opts, 'bar');
+    applyChromeAttrs(el, opts);
+    el.style.setProperty('--cc-max', String(max));
+    el.style.setProperty('--cc-min', String(min));
+    applyGridDivisions(el, ticks.length);
+    if (opts.height) el.style.setProperty('--cc-h', opts.height);
+
+    el.innerHTML =
+      srTable +
+      '<div class="cc-frame">' +
+      '<div class="cc-plot-wrap">' +
+      gridHtml(Object.assign({}, opts, { grid: opts.grid == null ? 'xy' : opts.grid })) +
+      '<div class="cc-plot">' +
+      cats +
+      '</div></div></div>' +
+      legend +
+      tips;
+
+    const plot = el.querySelector('.cc-plot');
+    bindLegend(el);
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function () {
+        staggerPlot(plot);
+      });
+    } else {
+      staggerPlot(plot);
+    }
+    return { min: min, max: max, el: el };
+  }
+
+  function renderBarWaterfall(el, opts) {
+    const data = normalizeData(opts.data);
+    if (!data.length) return clearChart(el);
+    const nameKey = opts.nameKey || 'name';
+    const s = (opts.series && opts.series[0]) || { key: 'value', label: 'Value' };
+    const key = s.key || 'value';
+    const rows = [];
+    let running = 0;
+    data.forEach(function (row) {
+      const isTotal = !!(row.total || row.isTotal);
+      let v = rawNum(row[key]);
+      if (isTotal) {
+        if (v == null) v = running;
+        rows.push({
+          name: row[nameKey] != null ? row[nameKey] : 'Total',
+          offset: 0,
+          span: v,
+          kind: 'total',
+          display: v,
+        });
+        running = v;
+      } else {
+        if (v == null) v = 0;
+        const offset = v >= 0 ? running : running + v;
+        rows.push({
+          name: row[nameKey] != null ? row[nameKey] : '',
+          offset: offset,
+          span: Math.abs(v),
+          kind: v >= 0 ? 'up' : 'down',
+          display: v,
+        });
+        running += v;
+      }
+    });
+
+    const tops = rows.map(function (r) {
+      return r.offset + r.span;
+    });
+    const min = opts.min != null ? Number(opts.min) : Math.min.apply(Math, [0].concat(rows.map(function (r) { return r.offset; })));
+    const max = finiteMax(opts, tops, min);
+    const ticks = yTicks(max, opts.ticks || 5, min);
+    const spark = isSparkline(opts);
+    const useTips = opts.tooltip !== false && !spark;
+    const base = tipBaseId(el);
+    const tipParts = [];
+    const seriesLabel = s.label || key;
+
+    const cats = rows
+      .map(function (r, i) {
+        const id = base + '-w-' + i;
+        const colorDecl =
+          r.kind === 'total'
+            ? '--cc-series: var(--cc-s3)'
+            : r.kind === 'down'
+              ? '--cc-series: var(--cc-s4)'
+              : '--cc-series: var(--cc-s2)';
+        const shown = formatValue(r.display, opts, 'left');
+        if (useTips) {
+          tipParts.push(
+            buildInterestTip(id, {
+              title: String(r.name),
+              series: key,
+              seriesLabel: seriesLabel,
+              value: shown,
+              colorDecl: colorDecl,
+            }).tipHtml
+          );
+        }
+        const bar = offsetBarButton({
+          useTips: useTips,
+          id: id,
+          colorDecl: colorDecl,
+          name: String(r.name),
+          seriesLabel: seriesLabel,
+          seriesKey: r.kind,
+          shown: shown,
+          v: r.span,
+          offset: r.offset,
+        });
+        return (
+          '<div class="cc-cat" data-label="' +
+          escapeHtml(String(r.name)) +
+          '"><div class="cc-cat-bars">' +
+          bar +
+          '</div></div>'
+        );
+      })
+      .join('');
+
+    const tips =
+      useTips && tipParts.length
+        ? '<div class="cc-tips">' + tipParts.join('') + '</div>'
+        : '';
+    const srTable =
+      opts.srTable === false
+        ? ''
+        : dataTableHtml(
+            data,
+            [{ key: key, label: seriesLabel }],
+            Object.assign({}, opts, { type: 'bar' })
+          );
+
+    el.classList.add('cc-chart');
+    el.setAttribute('data-type', 'bar');
+    el.setAttribute('data-layout', 'waterfall');
+    applyChartA11y(el, opts, 'bar');
+    applyChromeAttrs(el, opts);
+    el.style.setProperty('--cc-max', String(max));
+    el.style.setProperty('--cc-min', String(min));
+    applyGridDivisions(el, ticks.length);
+    if (opts.height) el.style.setProperty('--cc-h', opts.height);
+
+    el.innerHTML =
+      srTable +
+      '<div class="cc-frame">' +
+      yAxisHtml(ticks, 'left', opts) +
+      '<div class="cc-plot-wrap">' +
+      gridHtml(opts) +
+      '<div class="cc-plot">' +
+      cats +
+      '</div></div>' +
+      xAxisHtml(
+        rows.map(function (r) {
+          const o = {};
+          o[nameKey] = r.name;
+          return o;
+        }),
+        nameKey,
+        opts
+      ) +
+      '</div>' +
+      tips;
+
+    const plot = el.querySelector('.cc-plot');
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function () {
+        staggerPlot(plot);
+      });
+    } else {
+      staggerPlot(plot);
+    }
+    return { min: min, max: max, el: el };
   }
 
   /**
@@ -1985,6 +2692,393 @@
     return { max: max, el: el };
   }
 
+  function renderScatter(el, opts) {
+    if (!el || !opts) return null;
+    const data = normalizeData(opts.data);
+    if (!data.length) return clearChart(el);
+
+    const xKey = opts.xKey || 'x';
+    const yKey = opts.yKey || 'y';
+    const seriesKey = opts.seriesKey;
+    let series = opts.series && opts.series.length ? opts.series.slice() : null;
+
+    if (!series) {
+      if (seriesKey) {
+        const seen = [];
+        data.forEach(function (row) {
+          const k = row[seriesKey];
+          if (k != null && seen.indexOf(String(k)) === -1) seen.push(String(k));
+        });
+        series = seen.map(function (k) {
+          return { key: k, label: k };
+        });
+      } else {
+        series = [{ key: yKey, label: opts.yTitle || yKey }];
+      }
+    }
+
+    const yKeys = series.map(function (s) {
+      return seriesKey ? yKey : s.key;
+    });
+    const xVals = numericDomain(data, [xKey]);
+    const yVals = numericDomain(
+      data,
+      seriesKey ? [yKey] : yKeys
+    );
+    const minX = opts.minX != null ? Number(opts.minX) : finiteMin({ min: opts.minX });
+    const maxX = finiteMax(
+      { max: opts.maxX },
+      xVals,
+      minX
+    );
+    const minY = finiteMin(opts);
+    const maxY = finiteMax(opts, yVals, minY);
+    const xTickVals = yTicks(maxX, opts.ticksX || opts.ticks || 5, minX);
+    const yTickVals = yTicks(maxY, opts.ticks || 5, minY);
+    const spark = isSparkline(opts);
+    const showLegend =
+      opts.legend === true ||
+      (!spark && opts.legend !== false && series.length > 1);
+    const useTips = opts.tooltip !== false && !spark;
+    const base = tipBaseId(el);
+    const tipParts = [];
+    const xAt = xAtScale(minX, maxX);
+    const yAt = yAtScale(minY, maxY);
+    const showLabels = !!opts.labels;
+
+    const layers = series
+      .map(function (s, si) {
+        const colorDecl = seriesColorDecl(si, s);
+        const seriesLabel = s.label || s.key;
+        const dots = data
+          .map(function (row, i) {
+            const xv = rawNum(row[xKey]);
+            const yv = seriesKey
+              ? String(row[seriesKey]) === String(s.key)
+                ? rawNum(row[yKey])
+                : null
+              : rawNum(row[s.key]);
+            if (xv == null || yv == null) return '';
+            const id = base + '-s-' + si + '-' + i;
+            const shown = formatValue(yv, opts, 'left');
+            const title =
+              row.name != null
+                ? String(row.name)
+                : formatValue(xv, opts, 'left');
+            if (useTips) {
+              tipParts.push(
+                buildInterestTip(id, {
+                  title: title,
+                  series: s.key,
+                  seriesLabel: seriesLabel,
+                  value: shown,
+                  colorDecl: colorDecl,
+                }).tipHtml
+              );
+            }
+            const style =
+              '--x:' +
+              round2(xAt(xv)) +
+              '%;--y:' +
+              round2(yAt(yv)) +
+              '%;' +
+              colorDecl +
+              (useTips ? ';anchor-name: --' + id : '');
+            const label = showLabels
+              ? '<span class="cc-line-label" aria-hidden="true" style="--x:' +
+                round2(xAt(xv)) +
+                '%;--y:' +
+                round2(yAt(yv)) +
+                '%">' +
+                escapeHtml(shown) +
+                '</span>'
+              : '';
+            return (
+              '<button type="button" class="cc-line-dot cc-scatter-dot" data-series="' +
+              escapeHtml(s.key) +
+              '" style="' +
+              style +
+              '" data-val="' +
+              yv +
+              '" aria-label="' +
+              escapeHtml(title) +
+              ', ' +
+              escapeHtml(seriesLabel) +
+              ': ' +
+              escapeHtml(shown) +
+              '"' +
+              (useTips
+                ? ' interestfor="' +
+                  escapeHtml(id) +
+                  '" aria-describedby="' +
+                  escapeHtml(id) +
+                  '"'
+                : '') +
+              '></button>' +
+              label
+            );
+          })
+          .join('');
+        return (
+          '<div class="cc-line-layer cc-scatter-layer" data-series="' +
+          escapeHtml(s.key) +
+          '" style="' +
+          colorDecl +
+          '"><div class="cc-line-points">' +
+          dots +
+          '</div></div>'
+        );
+      })
+      .join('');
+
+    const gridOpts = Object.assign({}, opts, {
+      grid: opts.grid == null ? 'xy' : opts.grid,
+    });
+    const legend = showLegend
+      ? legendHtml(series, Object.assign({}, opts, { legend: true }))
+      : '';
+    const tips =
+      useTips && tipParts.length
+        ? '<div class="cc-tips">' + tipParts.join('') + '</div>'
+        : '';
+    const srSeries = seriesKey
+      ? [
+          { key: xKey, label: opts.xTitle || xKey },
+          { key: yKey, label: opts.yTitle || yKey },
+          { key: seriesKey, label: 'Series' },
+        ]
+      : [{ key: xKey, label: opts.xTitle || xKey }].concat(series);
+    const srTable =
+      opts.srTable === false
+        ? ''
+        : dataTableHtml(
+            data,
+            srSeries,
+            Object.assign({}, opts, {
+              type: 'scatter',
+              nameKey: opts.nameKey || xKey,
+            })
+          );
+
+    el.classList.add('cc-chart');
+    el.setAttribute('data-type', 'scatter');
+    el.setAttribute('data-x', 'numeric');
+    applyChartA11y(el, opts, 'scatter');
+    applyChromeAttrs(el, opts);
+    el.style.setProperty('--cc-max', String(maxY));
+    el.style.setProperty('--cc-min', String(minY));
+    applyGridDivisions(el, yTickVals.length);
+    if (opts.height) el.style.setProperty('--cc-h', opts.height);
+    else if (spark) el.style.setProperty('--cc-h', '72px');
+
+    el.innerHTML =
+      srTable +
+      '<div class="cc-frame">' +
+      yAxisHtml(yTickVals, 'left', opts) +
+      '<div class="cc-plot-wrap">' +
+      gridHtml(gridOpts) +
+      refLinesHtml(opts, minY, maxY) +
+      '<div class="cc-plot">' +
+      layers +
+      '</div></div>' +
+      xAxisNumericHtml(xTickVals, minX, maxX, opts) +
+      '</div>' +
+      legend +
+      tips;
+
+    bindLegend(el);
+    return { el: el, minX: minX, maxX: maxX, min: minY, max: maxY };
+  }
+
+  function renderRadar(el, opts) {
+    if (!el || !opts) return null;
+    if (!opts.series || !opts.series.length) return clearChart(el);
+    const data = normalizeData(opts.data);
+    if (!data.length) return clearChart(el);
+
+    const nameKey = opts.nameKey || 'name';
+    const n = data.length;
+    const min = finiteMin(opts);
+    const max = finiteMax(opts, domainValues(data, opts.series), min);
+    const tickCount = opts.ticks || 4;
+    const yTickVals = yTicks(max, tickCount, min);
+    const spark = isSparkline(opts);
+    const showLegend =
+      opts.legend === true ||
+      (!spark && opts.legend !== false && opts.series.length > 1);
+    const useTips = opts.tooltip !== false && !spark;
+    const showDots = opts.dots !== false;
+    const base = tipBaseId(el);
+    const tipParts = [];
+    const rMax = 36;
+    const rAt = function (v) {
+      return ((Number(v) - min) / (max - min || 1)) * rMax;
+    };
+
+    const axes = data.map(function (row, i) {
+      const deg = (i / n) * 360;
+      return {
+        name: String(row[nameKey] != null ? row[nameKey] : i),
+        deg: deg,
+        row: row,
+        i: i,
+      };
+    });
+
+    const gridLevels = yTickVals
+      .filter(function (t) {
+        return t > min;
+      })
+      .map(function (t) {
+        return (
+          '<div class="cc-radar-ring" aria-hidden="true" style="--r:' +
+          round2(rAt(t)) +
+          '"></div>'
+        );
+      })
+      .join('');
+
+    const spokes = axes
+      .map(function (ax) {
+        return (
+          '<span class="cc-radar-spoke" aria-hidden="true" style="--rot: ' +
+          round2(ax.deg) +
+          'deg"></span>'
+        );
+      })
+      .join('');
+
+    const labels = axes
+      .map(function (ax) {
+        const p = polarPct(50, 50, 46, ax.deg);
+        return (
+          '<span class="cc-radar-label" aria-hidden="true" style="left:' +
+          round2(p.x) +
+          '%;top:' +
+          round2(p.y) +
+          '%">' +
+          escapeHtml(ax.name) +
+          '</span>'
+        );
+      })
+      .join('');
+
+    const layers = opts.series
+      .map(function (s, si) {
+        const colorDecl = seriesColorDecl(si, s);
+        const seriesLabel = s.label || s.key;
+        const pts = axes.map(function (ax) {
+          const v = rawNum(ax.row[s.key]);
+          const r = v == null ? 0 : rAt(v);
+          const p = polarPct(50, 50, r, ax.deg);
+          p.v = v;
+          p.name = ax.name;
+          p.i = ax.i;
+          return p;
+        });
+        const fill = closedPolygonShape(pts);
+        const dots = showDots
+          ? pts
+              .map(function (p) {
+                if (p.v == null) return '';
+                const id = base + '-rd-' + si + '-' + p.i;
+                const shown = formatValue(p.v, opts, 'left');
+                if (useTips) {
+                  tipParts.push(
+                    buildInterestTip(id, {
+                      title: p.name,
+                      series: s.key,
+                      seriesLabel: seriesLabel,
+                      value: shown,
+                      colorDecl: colorDecl,
+                    }).tipHtml
+                  );
+                }
+                return (
+                  '<button type="button" class="cc-line-dot cc-radar-dot" data-series="' +
+                  escapeHtml(s.key) +
+                  '" style="--x:' +
+                  round2(p.x) +
+                  '%;--y:' +
+                  round2(p.y) +
+                  '%;' +
+                  colorDecl +
+                  (useTips ? ';anchor-name: --' + id : '') +
+                  '" aria-label="' +
+                  escapeHtml(p.name) +
+                  ', ' +
+                  escapeHtml(seriesLabel) +
+                  ': ' +
+                  escapeHtml(shown) +
+                  '"' +
+                  (useTips
+                    ? ' interestfor="' +
+                      escapeHtml(id) +
+                      '" aria-describedby="' +
+                      escapeHtml(id) +
+                      '"'
+                    : '') +
+                  '></button>'
+                );
+              })
+              .join('')
+          : '';
+        return (
+          '<div class="cc-radar-layer" data-series="' +
+          escapeHtml(s.key) +
+          '" style="' +
+          colorDecl +
+          '">' +
+          '<div class="cc-radar-area" style="clip-path: ' +
+          fill +
+          '" aria-hidden="true"></div>' +
+          '<div class="cc-line-points">' +
+          dots +
+          '</div></div>'
+        );
+      })
+      .join('');
+
+    const legend = showLegend
+      ? legendHtml(opts.series, Object.assign({}, opts, { legend: true }))
+      : '';
+    const tips =
+      useTips && tipParts.length
+        ? '<div class="cc-tips">' + tipParts.join('') + '</div>'
+        : '';
+    const srTable =
+      opts.srTable === false
+        ? ''
+        : dataTableHtml(
+            data,
+            opts.series,
+            Object.assign({}, opts, { type: 'radar' })
+          );
+
+    el.classList.add('cc-chart');
+    el.setAttribute('data-type', 'radar');
+    applyChartA11y(el, opts, 'radar');
+    if (opts.height) el.style.setProperty('--cc-h', opts.height);
+    else el.style.setProperty('--cc-h', '280px');
+
+    el.innerHTML =
+      srTable +
+      '<div class="cc-radar">' +
+      '<div class="cc-radar-plot">' +
+      '<div class="cc-radar-grid" aria-hidden="true">' +
+      gridLevels +
+      spokes +
+      '</div>' +
+      layers +
+      labels +
+      '</div></div>' +
+      legend +
+      tips;
+
+    bindLegend(el);
+    return { el: el, min: min, max: max };
+  }
+
   function syncBarColMeta(col) {
     const v = Number(col.getAttribute('data-v')) || 0;
     const label = col.getAttribute('data-label') || '';
@@ -2106,6 +3200,10 @@
     renderLine: renderLine,
     renderPie: renderPie,
     renderCombo: renderCombo,
+    renderScatter: renderScatter,
+    renderGauge: renderGauge,
+    renderHeatmap: renderHeatmap,
+    renderRadar: renderRadar,
     pieWedgeShape: pieWedgeShape,
     normalizeData: normalizeData,
     init: init,
