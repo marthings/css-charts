@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Pie charts · css-charts</title>
+  <script>
+    (() => {
+      try {
+        const s = localStorage.getItem('css-charts-theme');
+        const pref = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = s === 'light' || s === 'dark' ? s : pref;
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../src/css-charts.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">css-charts</span>
+        <span class="brand-tag">pie</span>
+      </a>
+      <nav class="nav" aria-label="Demo">
+        <a href="index.html">Home</a>
+        <a href="bar.html">Bar</a>
+        <a href="line.html">Line</a>
+        <a href="combo.html">Combo</a>
+        <a href="pie.html" aria-current="page">Pie</a>
+        <a href="theme.html">Theme</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
+          <span class="theme-toggle-label">Dark</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="main">
+    <p class="eyebrow">JSON → DOM · border-shape: shape() + arc · no SVG</p>
+    <h1 class="page-title">Pie charts</h1>
+    <p class="page-lede">
+      Each slice is a button shaped with
+      <code>border-shape: shape(… arc …)</code> — not <code>clip-path</code>, so
+      <strong>borders and shadows follow the wedge</strong>.
+      (That’s different from <code>corner-shape</code>, which only restyles
+      <code>border-radius</code> corners.)
+    </p>
+
+    <section class="section">
+      <h2>Pie</h2>
+      <p>Full wedges from the center · <code>type: 'pie'</code>.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">shape() arcs</p>
+            <h2 class="cc-title">Traffic by channel</h2>
+          </div>
+        </header>
+        <div id="pie-basic"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Donut</h2>
+      <p><code>donut: true</code> (or <code>innerRadius: 0.55</code>) — outer + reverse inner arc.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">donut: true</p>
+            <h2 class="cc-title">Share of wallet</h2>
+          </div>
+        </header>
+        <div id="pie-donut"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Themed donut</h2>
+      <p>Scoped <code>--cc-s*</code> + plot tokens on a wrapper.</p>
+      <div class="cc-shell theme-pie-ocean">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">CSS variables</p>
+            <h2 class="cc-title">Ocean pie</h2>
+          </div>
+        </header>
+        <div id="pie-theme"></div>
+      </div>
+    </section>
+
+    <section class="notes">
+      <h2>JSON → shape()</h2>
+      <pre class="snippet"><code>CssCharts.render(el, {
+  type: 'pie',
+  data: [
+    { name: 'Organic', value: 42 },
+    { name: 'Paid', value: 28 },
+    { name: 'Referral', value: 18 },
+    { name: 'Social', value: 12 },
+  ],
+  // valueKey: 'value',  // default
+  // donut: true,
+  // innerRadius: 0.55,  // 0–1, fraction of outer radius
+  ariaLabel: 'Traffic by channel',
+  caption: 'Traffic by channel',
+});
+
+/* Geometry lives on a custom property → border-shape (not clip-path) */
+.cc-pie-slice {
+  --cc-slice-shape: shape(
+    from 50% 50%,
+    line to 50% 0.5%,
+    arc to 99.5% 50% of 49.5% small cw,
+    close
+  );
+  border-shape: var(--cc-slice-shape);
+  border: 2px solid color-mix(in oklch, var(--cc-series) 35%, white);
+  box-shadow: 0 2px 10px …;
+}</code></pre>
+      <p style="color: var(--cc-muted); font-size: 0.9rem; margin-top: 1rem;">
+        <strong style="color: var(--cc-text);">Why not corner-shape?</strong>
+        It only changes how <code>border-radius</code> curves look (squircle, bevel, scoop…).
+        Pie wedges need full path geometry → <code>border-shape</code> + <code>shape()</code>.
+        Angles start at 12 o’clock, clockwise; large sweeps use the <code>large</code> arc flag.
+      </p>
+      <p style="color: var(--cc-muted); font-size: 0.9rem; margin-top: 0.75rem;">
+        Theme borders with <code>--cc-pie-slice-border-width</code> and
+        <code>--cc-pie-slice-border-color</code>. Requires a browser that implements
+        <code>border-shape</code> (Chromium experimental / Interop track).
+      </p>
+    </section>
+
+    <footer class="footer">
+      <a href="line.html">← Line</a>
+      <a href="index.html">Home</a>
+      <a href="theme.html">Theme →</a>
+    </footer>
+  </main>
+
+  <style>
+    .theme-pie-ocean {
+      --cc-s1: #38bdf8;
+      --cc-s2: #22d3ee;
+      --cc-s3: #818cf8;
+      --cc-s4: #2dd4bf;
+      --cc-text: #e0f2fe;
+      --cc-muted: #7dd3fc;
+      --cc-muted-2: #38bdf8;
+      --cc-accent: #38bdf8;
+      --cc-plot-bg: rgb(56 189 248 / 0.06);
+      --cc-plot-border: rgb(125 211 252 / 0.25);
+      --cc-tip-bg: #0c1929;
+      --cc-tip-border: rgb(125 211 252 / 0.35);
+      --cc-mark-bg: #0c1929;
+    }
+  </style>
+
+  <script src="../src/css-charts.js"></script>
+  <script src="demo.js"></script>
+  <script>
+    const traffic = [
+      { name: 'Organic', value: 42 },
+      { name: 'Paid', value: 28 },
+      { name: 'Referral', value: 18 },
+      { name: 'Social', value: 12 },
+    ];
+
+    CssCharts.render(document.getElementById('pie-basic'), {
+      type: 'pie',
+      data: traffic,
+      ariaLabel: 'Pie chart of traffic by channel',
+      caption: 'Traffic by channel',
+      size: '260px',
+    });
+
+    CssCharts.render(document.getElementById('pie-donut'), {
+      type: 'pie',
+      data: [
+        { name: 'Product', value: 36 },
+        { name: 'Services', value: 24 },
+        { name: 'Support', value: 20 },
+        { name: 'Other', value: 20 },
+      ],
+      donut: true,
+      innerRadius: 0.58,
+      ariaLabel: 'Donut chart of share of wallet',
+      caption: 'Share of wallet',
+      size: '260px',
+    });
+
+    CssCharts.render(document.getElementById('pie-theme'), {
+      type: 'pie',
+      data: traffic,
+      donut: true,
+      ariaLabel: 'Themed donut of traffic by channel',
+      caption: 'Traffic by channel (ocean theme)',
+      size: '240px',
+    });
+  </script>
+</body>
+</html>
