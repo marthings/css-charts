@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Line charts · css-charts</title>
+  <script>
+    (() => {
+      try {
+        const s = localStorage.getItem('css-charts-theme');
+        const pref = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = s === 'light' || s === 'dark' ? s : pref;
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../src/css-charts.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">css-charts</span>
+        <span class="brand-tag">line</span>
+      </a>
+      <nav class="nav" aria-label="Demo">
+        <a href="index.html">Home</a>
+        <a href="bar.html">Bar</a>
+        <a href="line.html" aria-current="page">Line</a>
+        <a href="combo.html">Combo</a>
+        <a href="pie.html">Pie</a>
+        <a href="theme.html">Theme</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
+          <span class="theme-toggle-label">Dark</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="main">
+    <p class="eyebrow">JSON → DOM · shape() line / area · interestfor tips</p>
+    <h1 class="page-title">Line charts</h1>
+    <p class="page-lede">
+      Default is a clean <strong>line only</strong> (solid ribbon, no gradient fade).
+      Set <code>area: true</code> for a filled under-curve gradient.
+      Dots, legend, and <code>interestfor</code> tips come from <code>CssCharts.render()</code>.
+    </p>
+
+    <section class="section">
+      <h2>Straight line (default)</h2>
+      <p><code>curve: 'straight'</code> (default) — polyline ribbon via <code>line to</code>.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">curve: straight</p>
+            <h2 class="cc-title">UV over pages</h2>
+          </div>
+        </header>
+        <div id="line-simple"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Smooth / curved line</h2>
+      <p><code>curve: 'smooth'</code> — cubic segments in <code>shape()</code> (<code>curve to … with …</code>).</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">curve: smooth</p>
+            <h2 class="cc-title">UV smooth</h2>
+          </div>
+        </header>
+        <div id="line-curved"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Smooth area</h2>
+      <p>Curved under-fill: <code>curve: 'smooth'</code> + <code>area: true</code>.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">curve + area</p>
+            <h2 class="cc-title">UV smooth area</h2>
+          </div>
+        </header>
+        <div id="line-curved-area"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Multi-series lines</h2>
+      <p>Two solid lines · shared domain · legend toggle.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">Multi series</p>
+            <h2 class="cc-title">UV vs PV</h2>
+          </div>
+        </header>
+        <div id="line-multi"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Area fill (gradient)</h2>
+      <p><code>area: true</code> — under-curve gradient fill with soft edge.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">area: true</p>
+            <h2 class="cc-title">UV with area</h2>
+          </div>
+        </header>
+        <div id="line-area"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Mixed: area + line</h2>
+      <p>Per-series: one filled, one line-only.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">Mixed series</p>
+            <h2 class="cc-title">UV area · PV line</h2>
+          </div>
+        </header>
+        <div id="line-mixed"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Point labels</h2>
+      <p><code>labels: true</code> on a line-only series.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">labels: true</p>
+            <h2 class="cc-title">Labeled points</h2>
+          </div>
+        </header>
+        <div id="line-labels"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Line without dots</h2>
+      <p><code>dots: false</code> — curve only (tips need dots, so tooltips off).</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">dots: false</p>
+            <h2 class="cc-title">Stroke only</h2>
+          </div>
+        </header>
+        <div id="line-nodots"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Gaps</h2>
+      <p>A <code>null</code> value breaks the line instead of dropping to zero.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">null → gap</p>
+            <h2 class="cc-title">Missing C</h2>
+          </div>
+        </header>
+        <div id="line-gaps"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Sparkline</h2>
+      <p><code>sparkline: true</code> hides axes, grid, and legend.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">sparkline: true</p>
+            <h2 class="cc-title">UV trend</h2>
+          </div>
+        </header>
+        <div id="line-spark"></div>
+      </div>
+    </section>
+
+    <section class="notes">
+      <h2>JSON → DOM</h2>
+      <pre class="snippet"><code>CssCharts.render(el, {
+  type: 'line',
+  data: [ /* rows */ ],
+  series: [
+    { key: 'uv', label: 'UV' },
+    { key: 'pv', label: 'PV', area: true, curve: 'smooth' },
+  ],
+  curve: 'straight', // chart default: 'straight' | 'smooth' (or true/false)
+  // area: false,
+  // dots: true,
+  // lineWidth: 0.9,
+  max: 5000,
+});</code></pre>
+      <p style="color: var(--cc-muted); font-size: 0.9rem; margin-top: 1rem;">
+        <strong style="color: var(--cc-text);">Straight:</strong>
+        <code>line to</code> between points.<br>
+        <strong style="color: var(--cc-text);">Smooth:</strong>
+        cubic <code>curve to … with cp1 / cp2</code> (Catmull–Rom style).<br>
+        Per-series <code>curve</code> overrides the chart setting.
+      </p>
+    </section>
+
+    <footer class="footer">
+      <a href="bar.html">← Bar charts</a>
+      <a href="index.html">Home</a>
+    </footer>
+  </main>
+
+  <script src="../src/css-charts.js"></script>
+  <script src="demo.js"></script>
+  <script>
+    const data = [
+      { name: 'A', uv: 4000, pv: 2400 },
+      { name: 'B', uv: 3000, pv: 1398 },
+      { name: 'C', uv: 2000, pv: 9800 },
+      { name: 'D', uv: 2780, pv: 3908 },
+      { name: 'E', uv: 1890, pv: 4800 },
+      { name: 'F', uv: 2390, pv: 3800 },
+      { name: 'G', uv: 3490, pv: 4300 },
+    ];
+    const sample = data.map((r) => ({
+      ...r,
+      pv: r.name === 'C' ? 4200 : r.pv,
+    }));
+
+    CssCharts.render(document.getElementById('line-simple'), {
+      type: 'line',
+      data: sample.map(({ name, uv }) => ({ name, uv })),
+      series: [{ key: 'uv', label: 'UV' }],
+      curve: 'straight',
+      max: 4000,
+      height: '260px',
+      ariaLabel: 'Straight line chart of UV over pages',
+      caption: 'UV over pages (straight)',
+    });
+
+    CssCharts.render(document.getElementById('line-curved'), {
+      type: 'line',
+      data: sample.map(({ name, uv }) => ({ name, uv })),
+      series: [{ key: 'uv', label: 'UV' }],
+      curve: 'smooth',
+      max: 4000,
+      height: '260px',
+      ariaLabel: 'Smooth curved line chart of UV over pages',
+      caption: 'UV over pages (smooth)',
+    });
+
+    CssCharts.render(document.getElementById('line-curved-area'), {
+      type: 'line',
+      data: sample.map(({ name, uv }) => ({ name, uv })),
+      series: [{ key: 'uv', label: 'UV', area: true }],
+      curve: 'smooth',
+      max: 4000,
+      height: '260px',
+      ariaLabel: 'Smooth area line chart of UV',
+      caption: 'UV smooth area',
+    });
+
+    CssCharts.render(document.getElementById('line-multi'), {
+      type: 'line',
+      data: sample,
+      series: [
+        { key: 'uv', label: 'UV' },
+        { key: 'pv', label: 'PV' },
+      ],
+      max: 5000,
+      height: '280px',
+      ariaLabel: 'Multi-series line chart of UV and PV',
+      caption: 'UV and PV over pages',
+    });
+
+    CssCharts.render(document.getElementById('line-area'), {
+      type: 'line',
+      data: sample.map(({ name, uv }) => ({ name, uv })),
+      series: [{ key: 'uv', label: 'UV', area: true }],
+      max: 4000,
+      height: '260px',
+      ariaLabel: 'Area line chart of UV',
+      caption: 'UV area over pages',
+    });
+
+    CssCharts.render(document.getElementById('line-mixed'), {
+      type: 'line',
+      data: sample,
+      series: [
+        { key: 'uv', label: 'UV', area: true },
+        { key: 'pv', label: 'PV', area: false },
+      ],
+      max: 5000,
+      height: '280px',
+      ariaLabel: 'Mixed area and line chart of UV and PV',
+      caption: 'UV area and PV line',
+    });
+
+    CssCharts.render(document.getElementById('line-labels'), {
+      type: 'line',
+      data: sample.map(({ name, uv }) => ({ name, uv })),
+      series: [{ key: 'uv', label: 'UV' }],
+      max: 4000,
+      labels: true,
+      height: '260px',
+      ariaLabel: 'Line chart of UV with point labels',
+      caption: 'UV with labels',
+    });
+
+    CssCharts.render(document.getElementById('line-nodots'), {
+      type: 'line',
+      data: sample,
+      series: [
+        { key: 'uv', label: 'UV' },
+        { key: 'pv', label: 'PV' },
+      ],
+      max: 5000,
+      dots: false,
+      tooltip: false,
+      height: '280px',
+      ariaLabel: 'Line chart of UV and PV without points',
+      caption: 'UV and PV stroke only',
+    });
+
+    const gapped = sample.map((r) =>
+      r.name === 'C' ? { name: r.name, uv: null } : { name: r.name, uv: r.uv }
+    );
+    CssCharts.render(document.getElementById('line-gaps'), {
+      type: 'line',
+      data: gapped,
+      series: [{ key: 'uv', label: 'UV', color: '#38bdf8' }],
+      curve: 'smooth',
+      max: 4000,
+      height: '240px',
+      ariaLabel: 'Line chart of UV with a gap at C',
+      caption: 'UV with missing C',
+    });
+
+    CssCharts.render(document.getElementById('line-spark'), {
+      type: 'line',
+      data: sample.map(({ name, uv }) => ({ name, uv })),
+      series: [{ key: 'uv', label: 'UV' }],
+      sparkline: true,
+      curve: 'smooth',
+      area: true,
+      dots: false,
+      max: 4000,
+      ariaLabel: 'Sparkline of UV',
+    });
+  </script>
+</body>
+</html>
