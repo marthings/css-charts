@@ -25,6 +25,10 @@
     "README.md"
   ],
   "scripts": {
-    "serve": "powershell -File ./serve.ps1"
+    "start": "npx --yes serve . -l 8090",
+    "serve": "npx --yes serve . -l 8090"
+  },
+  "devDependencies": {
+    "serve": "^14.2.4"
   }
 }

@@ -191,11 +191,13 @@ CssCharts.render(el, { type: 'bar', data: json, series: [{ key: 'uv' }] });
 
 ## Demo
 
-```powershell
-.\serve.ps1
+```bash
+npm start
 ```
 
 → [http://localhost:8090/demo/](http://localhost:8090/demo/)
+
+Same as `npx serve . -l 8090`. Works on macOS, Windows, and Linux.
 
 | Page | What it shows |
 | --- | --- |
