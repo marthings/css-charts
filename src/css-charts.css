@@ -1,0 +1,1463 @@
+/**
+ * css-charts — pure HTML/CSS chart library (Recharts-inspired)
+ *
+ * Composable cartesian charts: grid, axes, legend, tooltip, multi-series
+ * bar (group / stack / horizontal) and line (shape() area + HTML dots).
+ *
+ * No SVG. No canvas. No progressive fallbacks — modern CSS only
+ * (typed attr(), shape(), sibling-index(), sin(), border-shape, …).
+ *
+ * Values live in markup (data-v / --x / --y). Optional css-charts.js
+ * only emits markup from data and wires legend / a11y.
+ */
+
+/* ════════════════════════════════════════════════════════════════
+   1. TOKENS
+   Primitives  → palette / type (always useful to override)
+   Semantic    → component roles (transparent chrome by default)
+   ════════════════════════════════════════════════════════════════ */
+:root,
+.css-charts {
+  color-scheme: dark light;
+
+  /* ── Primitives ─────────────────────────────────────────────── */
+  /* Type — muted tones aimed at ≥4.5:1 on dark #0c0c0c / ink-bg */
+  --cc-text: #eceae6;
+  --cc-muted: #a8a59f;
+  --cc-muted-2: #8f8b84;
+  --cc-accent: #d4784a;
+  --cc-accent-2: #b85f32;
+  --cc-high: oklch(68% 0.17 45);
+  --cc-low: oklch(62% 0.12 250);
+  --cc-font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --cc-mono: ui-monospace, "SF Mono", Consolas, monospace;
+  --cc-radius: 12px;
+  --cc-radius-shell: 16px;
+
+  /* Series palette */
+  --cc-s1: #8884d8;
+  --cc-s2: #82ca9d;
+  --cc-s3: #ffc658;
+  --cc-s4: #ff7c7c;
+  --cc-s5: #8dd1e1;
+  --cc-s6: #a4de6c;
+
+  /* Optional “ink” used when you opt into filled chrome via themes */
+  --cc-ink-surface: rgb(255 255 255 / 0.04);
+  --cc-ink-surface-2: rgb(255 255 255 / 0.07);
+  --cc-ink-border: rgb(255 255 255 / 0.12);
+  --cc-ink-border-strong: rgb(255 255 255 / 0.2);
+  --cc-ink-bg: #0c0c0c;
+
+  /* ── Semantic: shell (optional card around a chart) ─────────── */
+  --cc-shell-bg: transparent;
+  --cc-shell-border: transparent;
+  --cc-shell-shadow: none;
+
+  /* ── Semantic: plot (the drawing area) ──────────────────────── */
+  --cc-plot-bg: transparent;
+  --cc-plot-border: transparent;
+  --cc-plot-radius: var(--cc-radius);
+  --cc-plot-shadow: none;
+
+  /* ── Semantic: grid / tips / marks ──────────────────────────── */
+  --cc-grid-color: rgb(128 128 128 / 0.22);
+  --cc-tip-bg: var(--cc-ink-bg);
+  --cc-tip-border: var(--cc-ink-border-strong);
+  --cc-tip-shadow: 0 16px 40px rgb(0 0 0 / 0.35);
+  --cc-mark-bg: Canvas;
+  --cc-control-hover: rgb(128 128 128 / 0.12);
+
+  /* ── Layout ─────────────────────────────────────────────────── */
+  --cc-max: 100;
+  --cc-h: 280px;
+  --cc-y-w: 2.75rem;
+  --cc-x-h: 1.75rem;
+  --cc-bar-gap: 4px;
+  --cc-cat-gap: 10%;
+  --cc-bar-radius: 4px;
+  --cc-max-bar-size: 48px;
+  --cc-bar-thickness: 1.1rem;
+  --cc-spin: 5.5s;
+  --cc-plot-h: 200px;
+  --cc-line-h: 240px;
+
+  /* Shared plot content inset — y-axis, grid, and series share this box */
+  --cc-plot-pad-t: 0.5rem;
+  --cc-plot-pad-r: 0.4rem;
+  --cc-plot-pad-b: 0.35rem;
+  --cc-plot-pad-l: 0.4rem;
+  /* Horizontal grid lines = divisions + 1 (default 5 ticks → 4 gaps) */
+  --cc-grid-divisions: 4;
+
+  /*
+   * Back-compat aliases — prefer semantic names in new themes.
+   * Default to transparent so charts sit cleanly on any page.
+   */
+  --cc-bg: var(--cc-mark-bg);
+  --cc-surface: var(--cc-shell-bg);
+  --cc-surface-2: var(--cc-plot-bg);
+  --cc-border: var(--cc-shell-border);
+  --cc-border-strong: var(--cc-plot-border);
+  --cc-grid: var(--cc-grid-color);
+}
+
+[data-theme="light"],
+.css-charts[data-theme="light"] {
+  /* Type — muted tones aimed at ≥4.5:1 on light paper */
+  --cc-text: #1c1b19;
+  --cc-muted: #57534e;
+  --cc-muted-2: #78716c;
+  --cc-accent: #c45f2e;
+  --cc-accent-2: #9a4a22;
+
+  --cc-ink-surface: rgb(20 18 14 / 0.04);
+  --cc-ink-surface-2: rgb(20 18 14 / 0.07);
+  --cc-ink-border: rgb(20 18 14 / 0.1);
+  --cc-ink-border-strong: rgb(20 18 14 / 0.16);
+  --cc-ink-bg: #ffffff;
+
+  /* Chrome stays transparent unless a theme opts in */
+  --cc-shell-bg: transparent;
+  --cc-shell-border: transparent;
+  --cc-plot-bg: transparent;
+  --cc-plot-border: transparent;
+  --cc-grid-color: rgb(28 25 23 / 0.14);
+  --cc-tip-bg: #ffffff;
+  --cc-tip-border: var(--cc-ink-border);
+  --cc-tip-shadow: 0 12px 32px rgb(20 18 14 / 0.12);
+  --cc-control-hover: rgb(20 18 14 / 0.06);
+}
+
+/* Series color mapping */
+[data-series="uv"],
+[data-series="s1"],
+[data-series="a"] { --cc-series: var(--cc-s1); }
+[data-series="pv"],
+[data-series="s2"],
+[data-series="b"] { --cc-series: var(--cc-s2); }
+[data-series="amt"],
+[data-series="s3"],
+[data-series="c"] { --cc-series: var(--cc-s3); }
+[data-series="s4"] { --cc-series: var(--cc-s4); }
+[data-series="s5"] { --cc-series: var(--cc-s5); }
+[data-series="s6"] { --cc-series: var(--cc-s6); }
+
+/* ════════════════════════════════════════════════════════════════
+   2. MOTION
+   ════════════════════════════════════════════════════════════════ */
+@property --cc-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@keyframes cc-spin-angle {
+  to { --cc-angle: 360deg; }
+}
+
+@keyframes cc-bar-rise {
+  from { transform: scaleY(0); opacity: 0.35; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes cc-bar-grow-x {
+  from { transform: scaleX(0); opacity: 0.35; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   3. SHELL / CHROME (toolbar, modes, buttons)
+   ════════════════════════════════════════════════════════════════ */
+.cc-shell {
+  /* No default padding — align flush with host page content */
+  padding: 0;
+  border-radius: var(--cc-radius-shell);
+  border: 1px solid var(--cc-shell-border);
+  background: var(--cc-shell-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: var(--cc-text);
+  font-family: var(--cc-font);
+  box-shadow: var(--cc-shell-shadow);
+  corner-shape: squircle;
+}
+
+.cc-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.cc-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  color: var(--cc-muted-2);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cc-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--cc-text);
+}
+
+.cc-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.cc-mode {
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.3rem 0.65rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cc-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.cc-mode:hover {
+  color: var(--cc-text);
+  background: var(--cc-control-hover);
+}
+
+.cc-mode.is-active,
+.cc-mode[aria-pressed="true"] {
+  background: var(--cc-control-hover);
+  color: var(--cc-text);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--cc-text) 18%, transparent);
+}
+
+.cc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.cc-btn {
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  border: none;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+  letter-spacing: -0.01em;
+}
+
+.cc-btn:active { opacity: 0.88; }
+
+.cc-btn--primary {
+  background: var(--cc-accent);
+  color: #1a100c;
+}
+
+.cc-btn--primary:hover { filter: brightness(1.08); }
+
+.cc-btn--ghost {
+  background: transparent;
+  color: var(--cc-muted);
+}
+
+.cc-btn--ghost:hover {
+  color: var(--cc-text);
+  background: var(--cc-control-hover);
+}
+
+.cc-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--cc-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.cc-check input { accent-color: var(--cc-accent); }
+
+/* ════════════════════════════════════════════════════════════════
+   4. TOOLTIPS — interestfor + popover="hint"
+   Invoker: interestfor="id" + anchor-name
+   Target:  id + popover="hint" + position-anchor
+   ════════════════════════════════════════════════════════════════ */
+.cc-tips {
+  /* Host for tip popovers; actual display is top-layer */
+  display: contents;
+}
+
+.cc-tip {
+  /* Reset UA popover defaults; anchor to the interested mark */
+  inset: auto;
+  margin: 0;
+  max-width: 16rem;
+  min-width: 7.5rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 8px;
+  background: var(--cc-tip-bg);
+  color: var(--cc-text);
+  border: 1px solid var(--cc-tip-border);
+  box-shadow: var(--cc-tip-shadow);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  font-family: var(--cc-font);
+  opacity: 0;
+  position: fixed;
+  position-area: block-start;
+  margin-bottom: 0.45rem;
+  position-try-fallbacks: flip-block, flip-inline;
+}
+
+.cc-tip:popover-open,
+.cc-tip:open {
+  opacity: 1;
+}
+
+.cc-tip strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 550;
+  color: var(--cc-text);
+  letter-spacing: -0.01em;
+}
+
+.cc-tip p {
+  margin: 0;
+  color: var(--cc-muted);
+}
+
+.cc-tip-rows {
+  display: grid;
+  gap: 0.28rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cc-tip-rows li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--cc-muted);
+  font-size: 0.78rem;
+}
+
+.cc-tip-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 2px;
+  background: var(--cc-series, var(--cc-accent));
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+.cc-tip-rows .cc-tip-val {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--cc-text);
+  font-family: var(--cc-mono);
+  font-size: 0.75rem;
+  padding-left: 0.75rem;
+}
+
+.cc-tip::backdrop {
+  display: none;
+}
+
+/* ── Screen-reader only data table (WCAG chart alternative) ─── */
+.cc-sr-table {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Shared visible focus (WCAG 2.4.7 / 2.4.13 — 3:1 non-text) */
+.cc-bar:focus-visible,
+.cc-line-dot:focus-visible,
+.cc-bar-col:focus-visible,
+.cc-pie-slice:focus-visible,
+.cc-legend button:focus-visible,
+.cc-mode:focus-visible,
+.cc-btn:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 2px;
+}
+
+.cc-bar,
+.cc-line-dot,
+.cc-bar-col,
+.cc-pie-slice {
+  interest-delay: 0s;
+  interest-show-delay: 0s;
+  interest-hide-delay: 0.12s;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   5. CARTESIAN FRAME (ResponsiveContainer + axes + grid)
+   ════════════════════════════════════════════════════════════════ */
+.cc-chart {
+  --cc-max: 100;
+  --cc-min: 0;
+  position: relative; /* contains .cc-sr-table */
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+  color: var(--cc-text);
+  font-family: var(--cc-font);
+}
+
+/* Extra top inset when value labels sit above bars */
+.cc-chart[data-labels] {
+  --cc-plot-pad-t: 1.35rem;
+}
+
+.cc-frame {
+  display: grid;
+  grid-template-columns: var(--cc-y-w) 1fr;
+  grid-template-rows: 1fr var(--cc-x-h);
+  gap: 0.25rem 0.5rem;
+  min-height: var(--cc-h);
+  height: var(--cc-h);
+}
+
+.cc-chart[data-axis-right] .cc-frame {
+  grid-template-columns: var(--cc-y-w) 1fr var(--cc-y-w);
+}
+
+.cc-chart[data-y-title] {
+  --cc-y-w: 3.5rem;
+}
+
+.cc-chart[data-sparkline] {
+  gap: 0.35rem;
+}
+
+.cc-chart[data-sparkline] .cc-frame {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  gap: 0;
+  min-height: var(--cc-h, 72px);
+  height: var(--cc-h, 72px);
+}
+
+.cc-chart[data-sparkline] .cc-plot-wrap {
+  grid-column: 1;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.cc-chart[data-sparkline] .cc-y-axis,
+.cc-chart[data-sparkline] .cc-x-axis,
+.cc-chart[data-sparkline] .cc-legend,
+.cc-chart[data-sparkline] .cc-grid {
+  display: none;
+}
+
+/*
+ * Y ticks sit on the same vertical scale as the grid:
+ * --y: 0% = top of plot content (domain max), 100% = bottom (domain min).
+ */
+.cc-y-axis {
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
+  display: block;
+  margin: 0;
+  padding: 0;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--cc-muted-2);
+  font-family: var(--cc-mono);
+  user-select: none;
+  pointer-events: none;
+}
+
+.cc-y-axis > span:not(.cc-y-title) {
+  position: absolute;
+  right: 0;
+  /* --y: 0 = domain max (top), 100 = domain min (bottom) */
+  top: calc(
+    var(--cc-plot-pad-t) +
+      (100% - var(--cc-plot-pad-t) - var(--cc-plot-pad-b)) * var(--y, 0) / 100
+  );
+  transform: translateY(-50%);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.cc-y-axis--right {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.cc-y-axis--right > span:not(.cc-y-title) {
+  right: auto;
+  left: 0;
+}
+
+.cc-y-title {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: auto;
+  transform: translate(-10%, -50%) rotate(-90deg);
+  transform-origin: center;
+  white-space: nowrap;
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+  color: var(--cc-muted);
+  pointer-events: none;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-y-axis--right .cc-y-title {
+  left: auto;
+  right: 0;
+  transform: translate(10%, -50%) rotate(90deg);
+}
+
+.cc-plot-wrap {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--cc-plot-border);
+  border-radius: var(--cc-plot-radius);
+  background: var(--cc-plot-bg);
+  box-shadow: var(--cc-plot-shadow);
+  /* visible so bar labels / hover tips above marks are not clipped */
+  overflow: visible;
+  corner-shape: squircle;
+}
+
+/* Grid fills the same content box as series (matches y-axis --y scale) */
+.cc-grid {
+  position: absolute;
+  top: var(--cc-plot-pad-t);
+  right: var(--cc-plot-pad-r);
+  bottom: var(--cc-plot-pad-b);
+  left: var(--cc-plot-pad-l);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.9;
+  /*
+   * Lines at 0%, 1/d, 2/d, … 100% of content height.
+   * --cc-grid-divisions = tickCount - 1 (set by render).
+   */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--cc-grid-color) 0,
+    var(--cc-grid-color) 1px,
+    transparent 1px,
+    transparent calc(100% / var(--cc-grid-divisions, 4))
+  );
+}
+
+.cc-grid[data-vertical] {
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      var(--cc-grid-color) 0,
+      var(--cc-grid-color) 1px,
+      transparent 1px,
+      transparent calc(100% / var(--cc-grid-divisions, 4))
+    ),
+    repeating-linear-gradient(
+      to right,
+      var(--cc-grid-color) 0,
+      var(--cc-grid-color) 1px,
+      transparent 1px,
+      transparent 20%
+    );
+}
+
+.cc-ref-line {
+  position: absolute;
+  left: var(--cc-plot-pad-l);
+  right: var(--cc-plot-pad-r);
+  /* --cc-ref is % from bottom of content box (same as data domain) */
+  bottom: calc(var(--cc-plot-pad-b) + var(--cc-ref, 50%) * (100% - var(--cc-plot-pad-t) - var(--cc-plot-pad-b)) / 100);
+  height: 0;
+  border-top: 1px dashed color-mix(in oklch, var(--cc-accent) 55%, var(--cc-muted));
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cc-ref-line::after {
+  content: attr(data-label);
+  position: absolute;
+  right: 0.35rem;
+  top: -0.9rem;
+  font-size: 0.62rem;
+  font-family: var(--cc-mono);
+  color: var(--cc-muted);
+}
+
+.cc-plot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: var(--cc-cat-gap, 0.5rem);
+  padding: var(--cc-plot-pad-t) var(--cc-plot-pad-r) var(--cc-plot-pad-b) var(--cc-plot-pad-l);
+  z-index: 1;
+  overflow: visible;
+}
+
+.cc-x-axis {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--cc-cat-gap, 0.5rem);
+  padding: 0.15rem var(--cc-plot-pad-r) 0 var(--cc-plot-pad-l);
+  font-size: 0.68rem;
+  color: var(--cc-muted-2);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.cc-x-axis span,
+.cc-x-tick {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Legend */
+.cc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  justify-content: center;
+  font-size: 0.82rem;
+  color: var(--cc-muted);
+}
+
+.cc-legend li,
+.cc-legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.15rem 0.25rem;
+  border-radius: 4px;
+}
+
+.cc-legend button {
+  min-height: 24px;
+  min-width: 24px;
+}
+
+.cc-legend button:hover,
+.cc-legend button:focus-visible {
+  color: var(--cc-text);
+  background: var(--cc-control-hover);
+}
+
+.cc-legend .cc-swatch {
+  flex-shrink: 0;
+}
+
+.cc-legend .cc-swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  background: var(--cc-series, var(--cc-accent));
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+.cc-legend [data-off] {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+
+/* Legend toggle sets data-off on matching marks (any series key). */
+.cc-bar[data-off],
+.cc-line-layer[data-off],
+.cc-pie-slice[data-off] {
+  opacity: 0.08 !important;
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   6. BAR CHART — simple / group / stack / horizontal
+   ════════════════════════════════════════════════════════════════ */
+
+/* Category column */
+.cc-cat {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  height: 100%;
+}
+
+.cc-cat-bars {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--cc-bar-gap, 4px);
+  height: 100%;
+}
+
+/* Single bar mark */
+.cc-bar {
+  --v: attr(data-v type(<number>), 0);
+  --cc-ratio: calc(
+    (var(--v) - var(--cc-min, 0)) /
+    (var(--cc-max, 100) - var(--cc-min, 0))
+  );
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  max-width: var(--cc-max-bar-size);
+  height: calc(var(--cc-ratio) * 100%);
+  min-height: 2px;
+  /* Width target ≥24px where layout allows (2.5.8); height stays data-true */
+  min-width: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cc-bar-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--cc-bar-radius) var(--cc-bar-radius) 0 0;
+  background: var(--cc-series, var(--cc-accent));
+  box-shadow:
+    0 0 12px color-mix(in oklch, var(--cc-series, var(--cc-accent)) 28%, transparent),
+    inset 0 1px 0 color-mix(in oklch, white 18%, transparent);
+  transition: filter 0.15s, height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cc-bar:hover .cc-bar-fill,
+.cc-bar:focus-visible .cc-bar-fill {
+  filter: brightness(1.12);
+}
+
+.cc-bar:focus-visible .cc-bar-fill {
+  box-shadow:
+    0 0 0 2px var(--cc-mark-bg),
+    0 0 0 4px var(--cc-series, var(--cc-accent));
+  filter: brightness(1.08);
+}
+
+.cc-bar-value {
+  position: absolute;
+  top: -1.15rem;
+  left: 50%;
+  translate: -50% 0;
+  font-size: 0.62rem;
+  font-family: var(--cc-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--cc-muted);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 3;
+}
+
+.cc-chart[data-labels] .cc-bar-value,
+.cc-bar:hover .cc-bar-value,
+.cc-bar:focus-visible .cc-bar-value {
+  opacity: 1;
+}
+
+/* Grouped (default multi-series) */
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="group"] .cc-cat-bars,
+.cc-chart:is([data-type="bar"], [data-type="combo"]):not([data-layout]) .cc-cat-bars {
+  flex-direction: row;
+  align-items: flex-end;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="group"] .cc-bar,
+.cc-chart:is([data-type="bar"], [data-type="combo"]):not([data-layout]) .cc-cat-bars .cc-bar {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
+
+/* Simple single-series: full-ish width bars */
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="simple"] .cc-cat-bars {
+  justify-content: center;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="simple"] .cc-bar {
+  width: 70%;
+  max-width: var(--cc-max-bar-size);
+}
+
+/* Stacked */
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="stack"] .cc-cat-bars {
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="stack"] .cc-bar {
+  width: 70%;
+  max-width: var(--cc-max-bar-size);
+  height: calc(var(--cc-ratio) * 100%);
+  flex: 0 0 auto;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="stack"] .cc-bar-fill {
+  border-radius: 0;
+  box-shadow: inset 0 1px 0 color-mix(in oklch, white 12%, transparent);
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="stack"] .cc-bar:last-child .cc-bar-fill {
+  border-radius: var(--cc-bar-radius) var(--cc-bar-radius) 0 0;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="stack"] .cc-bar-value {
+  top: 50%;
+  translate: -50% -50%;
+  color: color-mix(in oklch, white 85%, var(--cc-text));
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+}
+
+/* Horizontal layout */
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-frame {
+  grid-template-columns: var(--cc-y-w) 1fr;
+  grid-template-rows: 1fr;
+  /* y-axis becomes category labels on left */
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-y-axis {
+  display: none;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-x-axis {
+  display: none;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-frame {
+  grid-template-columns: 1fr;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-plot-wrap {
+  grid-column: 1;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] {
+  /* Value axis is horizontal — keep shared pad; room for category labels on left */
+  --cc-plot-pad-l: 0.25rem;
+  --cc-plot-pad-r: 0.75rem;
+  --cc-cat-label-w: 3.5rem;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-plot {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 0.45rem;
+  /* padding already from shared --cc-plot-pad-* */
+}
+
+/* Value grid starts after category labels so bars and grid share one scale */
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-grid {
+  top: var(--cc-plot-pad-t);
+  right: var(--cc-plot-pad-r);
+  bottom: var(--cc-plot-pad-b);
+  left: calc(var(--cc-plot-pad-l) + var(--cc-cat-label-w) + 0.5rem);
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--cc-grid-color) 0,
+    var(--cc-grid-color) 1px,
+    transparent 1px,
+    transparent calc(100% / var(--cc-grid-divisions, 4))
+  );
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-cat {
+  flex-direction: row;
+  align-items: center;
+  height: auto;
+  gap: 0.5rem;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-cat-label {
+  flex: 0 0 var(--cc-cat-label-w);
+  font-size: 0.72rem;
+  color: var(--cc-muted-2);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-cat-bars {
+  flex: 1;
+  height: auto;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: var(--cc-bar-gap, 3px);
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"][data-stack] .cc-cat-bars,
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"].is-stack .cc-cat-bars {
+  flex-direction: row;
+  gap: 0;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-bar {
+  width: calc(var(--cc-ratio) * 100%);
+  height: var(--cc-bar-thickness);
+  max-width: none;
+  min-width: 0;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-bar-fill {
+  border-radius: 0 var(--cc-bar-radius) var(--cc-bar-radius) 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cc-chart:is([data-type="bar"], [data-type="combo"])[data-layout="horizontal"] .cc-bar-value {
+  top: 50%;
+  left: calc(100% + 0.35rem);
+  translate: 0 -50%;
+  opacity: 1;
+}
+
+/* Stagger enter */
+.cc-plot.is-running .cc-bar-fill {
+  animation: cc-bar-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc((sibling-index() - 1) * 0.04s);
+  transform-origin: bottom center;
+}
+
+.cc-chart[data-layout="horizontal"] .cc-plot.is-running .cc-bar-fill {
+  animation-name: cc-bar-grow-x;
+  transform-origin: left center;
+}
+
+/* Band colors (simple aesthetic bars) */
+.cc-bar[data-band="high"] { --cc-series: var(--cc-high); }
+.cc-bar[data-band="low"] { --cc-series: var(--cc-low); }
+
+/* ── Legacy lab bar (wave equalizer) — same scale as main charts ─ */
+.cc-bar-legacy {
+  --cc-max: 100;
+  --cc-legacy-pad-t: 0.25rem;
+  --cc-legacy-pad-x: 0.35rem;
+  --cc-legacy-x-h: 1.5rem;
+  --cc-grid-divisions: 2; /* 100 / 50 / 0 */
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  grid-template-rows: var(--cc-plot-h);
+  gap: 0.25rem 0.55rem;
+  align-items: stretch;
+  color: var(--cc-text);
+  font-family: var(--cc-font);
+}
+
+.cc-bar-legacy[data-mode="wave"] {
+  animation: cc-spin-angle var(--cc-spin, 5.5s) linear infinite;
+}
+
+/* Y labels: --y 0% = top (100), 100% = bottom (0) — matches grid */
+.cc-bar-y {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--cc-muted-2);
+  font-family: var(--cc-mono);
+  user-select: none;
+  pointer-events: none;
+}
+
+.cc-bar-y > span {
+  position: absolute;
+  right: 0;
+  top: calc(
+    var(--cc-legacy-pad-t) +
+      (100% - var(--cc-legacy-pad-t) - var(--cc-legacy-x-h)) * var(--y, 0) / 100
+  );
+  transform: translateY(-50%);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.cc-bar-plot {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr var(--cc-legacy-x-h);
+  height: var(--cc-plot-h);
+  min-height: var(--cc-plot-h);
+  padding: 0;
+  border-radius: var(--cc-plot-radius);
+  border: 1px solid var(--cc-plot-border);
+  background: var(--cc-plot-bg);
+  overflow: visible;
+  corner-shape: squircle;
+}
+
+/* Data track only — grid + bars share this box */
+.cc-bar-plot-data {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.45rem;
+  min-height: 0;
+  padding: var(--cc-legacy-pad-t) var(--cc-legacy-pad-x) 0;
+  z-index: 1;
+}
+
+.cc-bar-plot-data::before {
+  content: "";
+  position: absolute;
+  inset: var(--cc-legacy-pad-t) var(--cc-legacy-pad-x) 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--cc-grid-color) 0,
+    var(--cc-grid-color) 1px,
+    transparent 1px,
+    transparent calc(100% / var(--cc-grid-divisions, 2))
+  );
+  opacity: 0.9;
+}
+
+.cc-bar-plot-x {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 var(--cc-legacy-pad-x);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--cc-muted-2);
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+
+.cc-bar-plot-x span {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+
+.cc-bar-plot.is-running .cc-bar-col .cc-bar-fill {
+  animation: cc-bar-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc((sibling-index() - 1) * 0.06s);
+  transform-origin: bottom center;
+}
+
+/* Column is pure data height (labels live in .cc-bar-plot-x) */
+.cc-bar-col {
+  flex: 1;
+  min-width: 24px;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  --v: attr(data-v type(<number>), 40);
+  --band: attr(data-band type(<custom-ident>), mid);
+  --hue: calc(220 + sibling-index() * 14);
+}
+
+.cc-bar-col .cc-bar-fill {
+  display: block;
+  width: 100%;
+  max-width: 2.75rem;
+  margin-inline: auto;
+  border-radius: 12px 12px 4px 4px;
+  corner-shape: squircle;
+  border: 1px solid color-mix(in oklch, white 18%, transparent);
+  border-bottom-color: transparent;
+  /* % of data track only — same vertical domain as grid / y-axis */
+  height: calc(var(--v) / var(--cc-max, 100) * 100%);
+  min-height: 4px;
+  background: if(
+    style(--band: high): var(--cc-high);
+    style(--band: low): var(--cc-low);
+    else: oklch(65% 0.15 var(--hue))
+  );
+  box-shadow:
+    0 0 14px oklch(65% 0.15 var(--hue) / 0.28),
+    inset 0 1px 0 color-mix(in oklch, white 22%, transparent);
+  transition: height 0.45s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s;
+}
+
+.cc-bar-col[data-band="high"] .cc-bar-fill {
+  corner-shape: scoop;
+  border-radius: 14px 14px 4px 4px;
+}
+
+.cc-bar-legacy[data-mode="wave"] .cc-bar-col .cc-bar-fill {
+  height: calc(
+    28% + (sin(calc(var(--cc-angle, 0deg) + sibling-index() * 28deg)) * 0.5 + 0.5) * 72%
+  );
+  transition: none;
+  background: oklch(65% 0.16 calc(250 + sibling-index() * 12));
+}
+
+.cc-bar-col:hover .cc-bar-fill {
+  filter: brightness(1.12);
+}
+
+.cc-bar-col:focus-visible .cc-bar-fill {
+  filter: brightness(1.12);
+  box-shadow: 0 0 0 2px var(--cc-mark-bg), 0 0 0 4px var(--cc-accent);
+}
+
+/* Keep class for older markup; preferred labels are .cc-bar-plot-x */
+.cc-bar-label {
+  display: none;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   7. LINE CHART — layers, multi-series, labels
+   ════════════════════════════════════════════════════════════════ */
+.cc-chart[data-type="combo"] .cc-plot {
+  gap: 0;
+}
+
+.cc-chart[data-type="combo"] .cc-x-axis {
+  gap: 0;
+}
+
+.cc-chart[data-type="combo"] .cc-line-layer {
+  z-index: 2;
+}
+
+.cc-hits {
+  position: absolute;
+  top: var(--cc-plot-pad-t);
+  right: var(--cc-plot-pad-r);
+  bottom: var(--cc-plot-pad-b);
+  left: var(--cc-plot-pad-l);
+  display: flex;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.cc-hit {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.cc-chart[data-type="line"] .cc-plot {
+  display: block;
+  padding: 0;
+}
+
+.cc-line-layer {
+  position: absolute;
+  /* Same content box as .cc-grid / y-axis — not the full plot wrap */
+  top: var(--cc-plot-pad-t);
+  right: var(--cc-plot-pad-r);
+  bottom: var(--cc-plot-pad-b);
+  left: var(--cc-plot-pad-l);
+  pointer-events: none;
+}
+
+.cc-line-layer .cc-line-dot {
+  pointer-events: auto;
+}
+
+/*
+ * Line geometry via clip-path: shape() (no SVG).
+ * - default / data-area="false": solid ribbon along the curve (line only, no fill fade)
+ * - data-area="true": closed under-curve fill with optional soft edge
+ */
+.cc-line-area {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: clip-path 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s, background 0.3s;
+  /* Line-only default: solid series color (ribbon shape from render) */
+  background: var(--cc-series, var(--cc-accent));
+  opacity: 1;
+  filter: drop-shadow(0 0 6px color-mix(in oklch, var(--cc-series, var(--cc-accent)) 22%, transparent));
+}
+
+/* Gradient area fill under the curve */
+.cc-line-layer[data-area="true"] .cc-line-area,
+.cc-chart[data-area="true"] .cc-line-layer:not([data-area="false"]) .cc-line-area {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--cc-series, var(--cc-accent)) 48%, transparent) 0%,
+    color-mix(in oklch, var(--cc-series, var(--cc-accent)) 16%, transparent) 50%,
+    color-mix(in oklch, var(--cc-series, var(--cc-accent)) 4%, transparent) 100%
+  );
+  filter:
+    drop-shadow(0 -1.25px 0 var(--cc-series, var(--cc-accent)))
+    drop-shadow(0 8px 16px color-mix(in oklch, var(--cc-series, var(--cc-accent)) 16%, transparent));
+  opacity: 0.95;
+}
+
+.cc-line-points {
+  position: absolute;
+  inset: 0;
+}
+
+.cc-line-dot {
+  position: absolute;
+  left: var(--x, 0%);
+  top: var(--y, 50%);
+  translate: -50% -50%;
+  /* Visual mark ~11px; hit target ≥24px (WCAG 2.5.8) via transparent padding */
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle closest-side,
+      var(--cc-mark-bg) 0 5px,
+      color-mix(in oklch, var(--cc-series, var(--cc-accent)) 75%, white) 5px 6.5px,
+      transparent 7px
+    );
+  box-shadow: none;
+  cursor: pointer;
+  z-index: 2;
+  transition: transform 0.15s, box-shadow 0.15s, top 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cc-line-dot:hover,
+.cc-line-dot:focus-visible {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--cc-series, var(--cc-accent)) 35%, transparent);
+  z-index: 3;
+}
+
+/* Hide dots when requested */
+.cc-chart[data-dots="false"] .cc-line-dot,
+.cc-line-layer[data-dots="false"] .cc-line-dot {
+  display: none;
+}
+
+.cc-line-label {
+  position: absolute;
+  left: var(--x, 0%);
+  top: var(--y, 50%);
+  translate: -50% calc(-100% - 0.55rem);
+  font-size: 0.62rem;
+  font-family: var(--cc-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--cc-muted);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   8. PIE / DONUT — shape() wedges via border-shape (not clip-path)
+   ────────────────────────────────────────────────────────────────
+   corner-shape only restyles border-radius corners (squircle, etc.)
+   and cannot take shape() / pie wedges.
+
+   border-shape: shape(…) redefines the box geometry so background,
+   border, outline, and box-shadow follow the wedge — the whole point
+   of not using clip-path here.
+   ════════════════════════════════════════════════════════════════ */
+.cc-chart[data-type="pie"] {
+  --cc-pie-size: min(100%, 280px);
+  --cc-pie-slice-border-width: 2px;
+  --cc-pie-slice-border-color: color-mix(
+    in oklch,
+    var(--cc-series, var(--cc-s1)) 35%,
+    white
+  );
+  --cc-pie-slice-shadow: 0 2px 10px
+    color-mix(in oklch, var(--cc-series, var(--cc-s1)) 28%, transparent);
+}
+
+.cc-pie {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.cc-pie-plot {
+  position: relative;
+  width: var(--cc-pie-size, 280px);
+  max-width: 100%;
+  aspect-ratio: 1;
+  flex-shrink: 0;
+  background: var(--cc-plot-bg);
+  border: 1px solid var(--cc-plot-border);
+  border-radius: 50%;
+  box-shadow: var(--cc-plot-shadow);
+}
+
+.cc-pie-slice {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  /* Real border + shadow follow the wedge via border-shape */
+  border: var(--cc-pie-slice-border-width) solid
+    var(--cc-pie-slice-border-color);
+  border-radius: 0;
+  background: var(--cc-series, var(--cc-s1));
+  box-shadow: var(--cc-pie-slice-shadow);
+  cursor: pointer;
+  transform-origin: 50% 50%;
+  transition: filter 0.15s, opacity 0.2s, transform 0.2s, box-shadow 0.15s;
+  outline-offset: 4px;
+  /*
+   * Geometry: custom property set inline by renderPie (shape() with arc).
+   * border-shape = fill geometry of the box (borders included).
+   */
+  border-shape: var(--cc-slice-shape);
+}
+
+.cc-pie-plot.is-running .cc-pie-slice {
+  animation: cc-pie-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc((sibling-index() - 1) * 0.05s);
+}
+
+@keyframes cc-pie-in {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.cc-pie-slice:hover {
+  filter: brightness(1.08);
+  z-index: 2;
+  box-shadow:
+    var(--cc-pie-slice-shadow),
+    0 0 0 1px color-mix(in oklch, var(--cc-series, var(--cc-s1)) 50%, white);
+}
+
+.cc-pie-slice:focus-visible {
+  z-index: 3;
+  filter: brightness(1.06);
+}
+
+.cc-pie-center {
+  position: absolute;
+  inset: 18%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+  text-align: center;
+  gap: 0.15rem;
+}
+
+.cc-pie-center strong {
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--cc-text);
+}
+
+.cc-pie-center span {
+  font-size: 0.62rem;
+  color: var(--cc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   9. REDUCED MOTION
+   ════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .cc-bar-legacy,
+  .cc-chart {
+    animation: none !important;
+  }
+
+  .cc-plot.is-running .cc-bar-fill,
+  .cc-bar-plot.is-running .cc-bar-fill,
+  .cc-pie-plot.is-running .cc-pie-slice {
+    animation: none !important;
+  }
+
+  .cc-bar-fill,
+  .cc-line-area,
+  .cc-line-dot,
+  .cc-pie-slice {
+    transition: none !important;
+  }
+}
