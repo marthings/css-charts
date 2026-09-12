@@ -4,8 +4,8 @@
  * Composable cartesian charts: grid, axes, legend, tooltip, multi-series
  * bar (group / stack / horizontal) and line (shape() area + HTML dots).
  *
- * No SVG. No canvas. No progressive fallbacks — modern CSS only
- * (typed attr(), shape(), sibling-index(), sin(), border-shape, …).
+ * No SVG. No canvas. Cutting-edge CSS (typed attr(), shape(),
+ * sibling-index(), sin(), border-shape, …) with @supports fallbacks.
  *
  * Values live in markup (data-v / --x / --y). Optional css-charts.js
  * only emits markup from data and wires legend / a11y.
@@ -1142,7 +1142,7 @@
   cursor: pointer;
   --v: attr(data-v type(<number>), 40);
   --band: attr(data-band type(<custom-ident>), mid);
-  --hue: calc(220 + sibling-index() * 14);
+  --hue: 250;
 }
 
 .cc-bar-col .cc-bar-fill {
@@ -1157,11 +1157,7 @@
   /* % of data track only — same vertical domain as grid / y-axis */
   height: calc(var(--v) / var(--cc-max, 100) * 100%);
   min-height: 4px;
-  background: if(
-    style(--band: high): var(--cc-high);
-    style(--band: low): var(--cc-low);
-    else: oklch(65% 0.15 var(--hue))
-  );
+  background: oklch(65% 0.15 var(--hue));
   box-shadow:
     0 0 14px oklch(65% 0.15 var(--hue) / 0.28),
     inset 0 1px 0 color-mix(in oklch, white 22%, transparent);
@@ -1385,21 +1381,20 @@
   inset: 0;
   margin: 0;
   padding: 0;
-  /* Real border + shadow follow the wedge via border-shape */
-  border: var(--cc-pie-slice-border-width) solid
-    var(--cc-pie-slice-border-color);
+  border: none;
   border-radius: 0;
   background: var(--cc-series, var(--cc-s1));
-  box-shadow: var(--cc-pie-slice-shadow);
+  box-shadow: none;
   cursor: pointer;
   transform-origin: 50% 50%;
   transition: filter 0.15s, opacity 0.2s, transform 0.2s, box-shadow 0.15s;
   outline-offset: 4px;
   /*
-   * Geometry: custom property set inline by renderPie (shape() with arc).
-   * border-shape = fill geometry of the box (borders included).
+   * Geometry: --cc-slice-shape is set inline by renderPie (shape() + arc).
+   * Base = clip-path (fill only). @supports upgrades to border-shape so
+   * border / shadow follow the wedge. See §9.
    */
-  border-shape: var(--cc-slice-shape);
+  clip-path: var(--cc-slice-shape);
 }
 
 .cc-pie-plot.is-running .cc-pie-slice {
@@ -1421,9 +1416,6 @@
 .cc-pie-slice:hover {
   filter: brightness(1.08);
   z-index: 2;
-  box-shadow:
-    var(--cc-pie-slice-shadow),
-    0 0 0 1px color-mix(in oklch, var(--cc-series, var(--cc-s1)) 50%, white);
 }
 
 .cc-pie-slice:focus-visible {
@@ -1743,7 +1735,160 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
-   9. REDUCED MOTION
+   9. @supports FALLBACKS
+   Base rules use the widely-parsed path. These blocks upgrade when
+   the engine implements the feature, or print a .cc-fallback note
+   when it does not (text lives in the DOM — not CSS content).
+   ════════════════════════════════════════════════════════════════ */
+.cc-fallbacks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-block-start: 0.75rem;
+}
+
+.cc-fallback {
+  display: none;
+  margin: 0;
+  max-width: 48ch;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--cc-muted);
+}
+
+.cc-fallback::before {
+  content: "Fallback · " / "";
+  font-weight: 600;
+  color: var(--cc-accent);
+}
+
+@supports (border-shape: shape(from 0% 0%, line to 100% 0%, close)) {
+  .cc-pie-slice {
+    clip-path: none;
+    border-shape: var(--cc-slice-shape);
+    border: var(--cc-pie-slice-border-width) solid
+      var(--cc-pie-slice-border-color);
+    box-shadow: var(--cc-pie-slice-shadow);
+  }
+
+  .cc-pie-slice:hover {
+    box-shadow:
+      var(--cc-pie-slice-shadow),
+      0 0 0 1px color-mix(in oklch, var(--cc-series, var(--cc-s1)) 50%, white);
+  }
+}
+
+@supports not (border-shape: shape(from 0% 0%, line to 100% 0%, close)) {
+  .cc-pie-slice {
+    filter: drop-shadow(
+      0 2px 8px
+        color-mix(in oklch, var(--cc-series, var(--cc-s1)) 28%, transparent)
+    );
+  }
+
+  .cc-fallback[data-need="border-shape"] {
+    display: block;
+  }
+}
+
+@supports not (clip-path: shape(from 0% 0%, line to 100% 0%, close)) {
+  .cc-pie-slice {
+    clip-path: none;
+    border-radius: 50%;
+    background: conic-gradient(
+      from var(--cc-start, 0deg),
+      var(--cc-series, var(--cc-s1)) 0 var(--cc-sweep, 90deg),
+      transparent var(--cc-sweep, 90deg)
+    );
+  }
+
+  .cc-chart[data-donut] .cc-pie-slice,
+  .cc-pie-plot.is-donut .cc-pie-slice {
+    mask-image: radial-gradient(
+      closest-side,
+      transparent calc(var(--cc-inner, 55%) - 0.5%),
+      #000 var(--cc-inner, 55%)
+    );
+  }
+
+  .cc-fallback[data-need="shape"] {
+    display: block;
+  }
+}
+
+@supports (background: oklch(62% 0.16 calc(220 + sibling-index() * 1))) {
+  .cc-bar-col {
+    --hue: calc(220 + sibling-index() * 14);
+  }
+}
+
+@supports (background: if(style(--x: 1): red; else: blue)) {
+  .cc-bar-col .cc-bar-fill {
+    background: if(
+      style(--band: high): var(--cc-high);
+      style(--band: low): var(--cc-low);
+      else: oklch(65% 0.15 var(--hue))
+    );
+  }
+}
+
+@supports not (background: if(style(--x: 1): red; else: blue)) {
+  .cc-bar-col[data-band="high"] .cc-bar-fill {
+    background: var(--cc-high);
+  }
+
+  .cc-bar-col[data-band="low"] .cc-bar-fill {
+    background: var(--cc-low);
+  }
+}
+
+@supports not (height: calc(attr(data-v type(<number>)) * 1%)) {
+  .cc-fallback[data-need="typed-attr"] {
+    display: block;
+  }
+}
+
+@supports not (animation-delay: calc(sibling-index() * 1s)) {
+  .cc-fallback[data-need="sibling-index"] {
+    display: block;
+  }
+
+  .cc-plot.is-running .cc-cat:nth-child(1) .cc-bar-fill,
+  .cc-pie-plot.is-running .cc-pie-slice:nth-child(1) {
+    animation-delay: 0s;
+  }
+  .cc-plot.is-running .cc-cat:nth-child(2) .cc-bar-fill,
+  .cc-pie-plot.is-running .cc-pie-slice:nth-child(2) {
+    animation-delay: 0.04s;
+  }
+  .cc-plot.is-running .cc-cat:nth-child(3) .cc-bar-fill,
+  .cc-pie-plot.is-running .cc-pie-slice:nth-child(3) {
+    animation-delay: 0.08s;
+  }
+  .cc-plot.is-running .cc-cat:nth-child(4) .cc-bar-fill,
+  .cc-pie-plot.is-running .cc-pie-slice:nth-child(4) {
+    animation-delay: 0.12s;
+  }
+  .cc-plot.is-running .cc-cat:nth-child(5) .cc-bar-fill,
+  .cc-pie-plot.is-running .cc-pie-slice:nth-child(5) {
+    animation-delay: 0.16s;
+  }
+  .cc-plot.is-running .cc-cat:nth-child(6) .cc-bar-fill,
+  .cc-pie-plot.is-running .cc-pie-slice:nth-child(6) {
+    animation-delay: 0.2s;
+  }
+  .cc-plot.is-running .cc-cat:nth-child(7) .cc-bar-fill,
+  .cc-pie-plot.is-running .cc-pie-slice:nth-child(7) {
+    animation-delay: 0.24s;
+  }
+  .cc-plot.is-running .cc-cat:nth-child(8) .cc-bar-fill,
+  .cc-pie-plot.is-running .cc-pie-slice:nth-child(8) {
+    animation-delay: 0.28s;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   10. REDUCED MOTION
    ════════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   .cc-bar-legacy,

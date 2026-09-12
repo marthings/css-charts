@@ -5,7 +5,8 @@
  *   CssCharts.render(el, { type: 'bar'|'line'|'pie'|'combo', data, series, … })
  *
  * That writes the HTML structure (bars / shape() areas / dots / tips).
- * CSS paints it. No SVG, no canvas, no drawing loop.
+ * CSS paints it (@supports fallbacks when a feature is missing).
+ * No SVG, no canvas, no drawing loop.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
@@ -206,6 +207,71 @@
     return null;
   }
 
+  function cssSupports(property, value) {
+    try {
+      return typeof CSS !== 'undefined' && CSS.supports(property, value);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  var typedAttrOk;
+  function supportsTypedAttr() {
+    if (typedAttrOk == null) {
+      typedAttrOk = cssSupports(
+        'height',
+        'calc(attr(data-v type(<number>)) * 1%)'
+      );
+    }
+    return typedAttrOk;
+  }
+
+  var FALLBACK_COPY = {
+    'border-shape':
+      'This browser does not support border-shape. Slices use clip-path: shape() instead — fills follow the wedge, but borders and shadows do not.',
+    shape:
+      'This browser does not support clip-path: shape(). Pie wedges fall back to a conic-gradient; line, radar, and area fills will not follow the series path.',
+    'typed-attr':
+      'This browser does not support typed attr(). Bar heights are set from inline --v copied from data-v.',
+    'sibling-index':
+      'This browser does not support sibling-index(). Stagger delays use :nth-child instead.',
+  };
+
+  function fallbackNotesHtml(needs) {
+    if (!needs || !needs.length) return '';
+    var parts = [];
+    for (var i = 0; i < needs.length; i++) {
+      var key = needs[i];
+      var text = FALLBACK_COPY[key];
+      if (!text) continue;
+      parts.push(
+        '<p class="cc-fallback" data-need="' +
+          key +
+          '">' +
+          text +
+          '</p>'
+      );
+    }
+    if (!parts.length) return '';
+    return (
+      '<div class="cc-fallbacks" role="status">' + parts.join('') + '</div>'
+    );
+  }
+
+  function attachFallbacks(el, needs) {
+    if (!el) return;
+    var html = fallbackNotesHtml(needs);
+    if (html) el.insertAdjacentHTML('beforeend', html);
+  }
+
+  function typedAttrDecls(v, offset) {
+    if (supportsTypedAttr()) return [];
+    var parts = [];
+    if (v != null && v !== '') parts.push('--v: ' + v);
+    if (offset != null && offset !== '') parts.push('--cc-offset: ' + offset);
+    return parts;
+  }
+
   /**
    * Y labels + grid share the same scale: --y 0% = top (max), 100% = bottom (min).
    * Sets --cc-grid-divisions so horizontal rules hit each tick.
@@ -358,6 +424,13 @@
     }
     const valEl = el.querySelector('.cc-bar-value');
     if (valEl && !valEl.dataset.locked) valEl.textContent = String(v);
+    if (!supportsTypedAttr()) {
+      el.style.setProperty('--v', String(v));
+      const offset = el.getAttribute('data-offset');
+      if (offset != null && offset !== '') {
+        el.style.setProperty('--cc-offset', offset);
+      }
+    }
   }
 
   function syncAllBars(root, opts) {
@@ -370,6 +443,7 @@
       const label = el.getAttribute('data-label') || '';
       el.setAttribute('data-band', bandForValue(v, opts));
       el.setAttribute('aria-label', label ? label + ', ' + v : String(v));
+      if (!supportsTypedAttr()) el.style.setProperty('--v', String(v));
     });
   }
 
@@ -973,46 +1047,52 @@
     let sweep = endDeg - startDeg;
     if (sweep < 0) sweep += 360;
     if (sweep > 359.95) {
-      /* Full circle / full ring */
+      /* Full circle / full ring.
+         border-shape does not punch holes from a second `from` subpath
+         (unlike clip-path evenodd). Use one contour: outer cw, radial
+         seam, inner ccw — same construction as a donut wedge. */
       if (inner > 0) {
+        const oy0 = round2(cy - r);
+        const oy1 = round2(cy + r);
+        const iy0 = round2(cy - inner);
+        const iy1 = round2(cy + inner);
         return (
           'shape(' +
           'from ' +
           cx +
           '% ' +
-          round2(cy - r) +
+          oy0 +
           '%, ' +
           'arc to ' +
           cx +
           '% ' +
-          round2(cy + r) +
+          oy1 +
           '% of ' +
           r +
           '% large cw, ' +
           'arc to ' +
           cx +
           '% ' +
-          round2(cy - r) +
+          oy0 +
           '% of ' +
           r +
           '% large cw, ' +
-          'close, ' +
-          'from ' +
+          'line to ' +
           cx +
           '% ' +
-          round2(cy - inner) +
+          iy0 +
           '%, ' +
           'arc to ' +
           cx +
           '% ' +
-          round2(cy + inner) +
+          iy1 +
           '% of ' +
           inner +
           '% large ccw, ' +
           'arc to ' +
           cx +
           '% ' +
-          round2(cy - inner) +
+          iy0 +
           '% of ' +
           inner +
           '% large ccw, ' +
@@ -1195,7 +1275,14 @@
         /* Geometry via --cc-slice-shape → border-shape (borders/shadows follow path).
            Not corner-shape (that only styles border-radius corners). */
         let style =
-          '--cc-slice-shape: ' + shape + '; ' + colorDecl;
+          '--cc-slice-shape: ' +
+          shape +
+          '; --cc-start: ' +
+          round2(start) +
+          'deg; --cc-sweep: ' +
+          round2(sweep) +
+          'deg; ' +
+          colorDecl;
         if (useTips) {
           tipParts.push(
             buildInterestTip(id, {
@@ -1279,6 +1366,7 @@
     applyChartA11y(el, opts, 'pie');
     if (opts.size) el.style.setProperty('--cc-pie-size', opts.size);
     if (opts.height) el.style.setProperty('--cc-h', opts.height);
+    el.style.setProperty('--cc-inner', round2(innerFrac * 100) + '%');
 
     const showCenter =
       (donut || innerR > 0) && opts.centerLabel !== false;
@@ -1308,6 +1396,7 @@
       tips;
 
     bindLegend(el);
+    attachFallbacks(el, ['border-shape', 'shape']);
     const plot = el.querySelector('.cc-pie-plot');
     if (plot && typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
@@ -1380,7 +1469,11 @@
       raw +
       '" style="--cc-slice-shape: ' +
       valueShape +
-      '; ' +
+      '; --cc-start: ' +
+      round2(startAngle) +
+      'deg; --cc-sweep: ' +
+      round2(t * span) +
+      'deg; ' +
       colorDecl +
       (useTips ? '; anchor-name: --' + id : '') +
       '"' +
@@ -1401,7 +1494,11 @@
     const track =
       '<div class="cc-pie-slice cc-gauge-track" aria-hidden="true" style="--cc-slice-shape: ' +
       trackShape +
-      '"></div>';
+      '; --cc-start: ' +
+      round2(startAngle) +
+      'deg; --cc-sweep: ' +
+      round2(span) +
+      'deg"></div>';
 
     const showCenter = opts.centerLabel !== false;
     const centerHtml = showCenter
@@ -1440,6 +1537,7 @@
     applyChartA11y(el, opts, 'gauge');
     if (opts.size) el.style.setProperty('--cc-pie-size', opts.size);
     if (opts.height) el.style.setProperty('--cc-h', opts.height);
+    el.style.setProperty('--cc-inner', round2(innerFrac * 100) + '%');
 
     el.innerHTML =
       srTable +
@@ -1451,6 +1549,7 @@
       '</div></div>' +
       tips;
 
+    attachFallbacks(el, ['border-shape', 'shape']);
     const plot = el.querySelector('.cc-pie-plot');
     if (plot && typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
@@ -1768,7 +1867,7 @@
             const seriesLabel = s.label || s.key;
             const id = shared ? catId : base + '-b-' + i + '-' + safeIdPart(s.key);
             const colorDecl = seriesColorDecl(si, s);
-            const styleParts = [colorDecl];
+            const styleParts = [colorDecl].concat(typedAttrDecls(round2(v)));
             const shown = percent
               ? resolveFormat(opts, 'left')
                 ? formatValue(round2(v), opts, 'left')
@@ -1909,6 +2008,7 @@
 
     const plot = el.querySelector('.cc-plot');
     bindLegend(el);
+    attachFallbacks(el, ['typed-attr', 'sibling-index']);
     if (typeof document !== 'undefined') {
       wireShellControls((el.closest && el.closest('.cc-shell')) || document);
     }
@@ -1939,7 +2039,9 @@
     const describedby = useTips
       ? ' aria-describedby="' + escapeHtml(id) + '"'
       : '';
-    const styleParts = [colorDecl];
+    const styleParts = [colorDecl].concat(
+      typedAttrDecls(round2(v), round2(offset))
+    );
     if (useTips) styleParts.push('anchor-name: --' + id);
     return (
       '<button type="button" class="cc-bar" data-series="' +
@@ -2102,6 +2204,7 @@
 
     const plot = el.querySelector('.cc-plot');
     bindLegend(el);
+    attachFallbacks(el, ['typed-attr', 'sibling-index']);
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
         staggerPlot(plot);
@@ -2246,6 +2349,7 @@
       tips;
 
     const plot = el.querySelector('.cc-plot');
+    attachFallbacks(el, ['typed-attr', 'sibling-index']);
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
         staggerPlot(plot);
@@ -2387,7 +2491,7 @@
               ? catId
               : base + '-b-' + i + '-' + safeIdPart(s.key);
             const colorDecl = seriesColorDecl(s._si, s);
-            const styleParts = [colorDecl];
+            const styleParts = [colorDecl].concat(typedAttrDecls(round2(v)));
             if (s._right) {
               styleParts.push('--cc-max: ' + maxRight, '--cc-min: ' + minRight);
             }
@@ -2546,6 +2650,7 @@
 
     const plot = el.querySelector('.cc-plot');
     bindLegend(el);
+    attachFallbacks(el, ['typed-attr', 'shape', 'sibling-index']);
     if (typeof document !== 'undefined') {
       wireShellControls((el.closest && el.closest('.cc-shell')) || document);
     }
@@ -2689,6 +2794,7 @@
       tips;
 
     bindLegend(el);
+    attachFallbacks(el, ['shape']);
     return { max: max, el: el };
   }
 
@@ -3076,6 +3182,7 @@
       tips;
 
     bindLegend(el);
+    attachFallbacks(el, ['shape']);
     return { el: el, min: min, max: max };
   }
 
@@ -3084,6 +3191,7 @@
     const label = col.getAttribute('data-label') || '';
     col.setAttribute('data-band', bandForValue(v));
     col.setAttribute('aria-label', label ? label + ', ' + v : String(v));
+    if (!supportsTypedAttr()) col.style.setProperty('--v', String(v));
     const tipId = col.getAttribute('interestfor');
     const tip = tipId ? document.getElementById(tipId) : null;
     const strong = tip && tip.querySelector('strong');
@@ -3207,6 +3315,8 @@
     pieWedgeShape: pieWedgeShape,
     normalizeData: normalizeData,
     init: init,
+    supportsTypedAttr: supportsTypedAttr,
+    attachFallbacks: attachFallbacks,
     wireShellControls: wireShellControls,
     bindBar: bindBarLegacy,
     bindLine: bindLineLegacy,

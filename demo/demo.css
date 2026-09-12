@@ -351,6 +351,47 @@ code {
   max-width: 40rem;
 }
 
+.support-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 1.75rem;
+  max-width: 48rem;
+}
+
+.support-chip {
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  background: var(--demo-page-surface);
+  color: var(--cc-muted-2);
+}
+
+.support-chip.yes {
+  color: #6aad7e;
+  background: rgb(106 173 126 / 0.1);
+}
+
+.support-chip.no {
+  color: #c9a05a;
+  background: rgb(201 160 90 / 0.1);
+}
+
+.support-chip.summary {
+  font-weight: 500;
+  color: var(--demo-page-fg);
+}
+
+.support-fallback-copy {
+  flex: 1 1 100%;
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--cc-muted);
+  max-width: 48ch;
+}
+
 .notes {
   margin-top: 2rem;
   padding-top: 1.5rem;

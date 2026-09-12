@@ -139,8 +139,12 @@
       </p>
       <p style="color: var(--cc-muted); font-size: 0.9rem; margin-top: 0.75rem;">
         Theme borders with <code>--cc-pie-slice-border-width</code> and
-        <code>--cc-pie-slice-border-color</code>. Requires a browser that implements
-        <code>border-shape</code> (Chromium experimental / Interop track).
+        <code>--cc-pie-slice-border-color</code>. With
+        <code>border-shape</code> (Chromium experimental / Interop track)
+        borders and shadows follow the wedge; otherwise
+        <code>@supports</code> falls back to <code>clip-path</code> (or a
+        <code>conic-gradient</code> if <code>shape()</code> is missing) and
+        prints a fallback note under the chart.
       </p>
     </section>
 

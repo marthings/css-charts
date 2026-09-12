@@ -2,7 +2,7 @@
 
 **JSON data → correct DOM. CSS paints the chart.**
 
-Pure HTML/CSS **bar**, **line**, **combo**, **pie/donut**, **scatter**, **gauge**, **heatmap**, and **radar** charts (Recharts-inspired composition). No SVG, no canvas, no D3, no progressive fallbacks. Geometry uses modern CSS including `clip-path: shape()` (lines, radar) and `border-shape: shape()` (pie/gauge arcs).
+Pure HTML/CSS **bar**, **line**, **combo**, **pie/donut**, **scatter**, **gauge**, **heatmap**, and **radar** charts (Recharts-inspired composition). No SVG, no canvas, no D3. Geometry uses modern CSS including `clip-path: shape()` (lines, radar) and `border-shape: shape()` (pie/gauge arcs), with `@supports` fallbacks when those features are missing.
 
 ```
 data (JSON / array)  ── CssCharts.render() ──►  DOM  ── CSS ──►  chart
@@ -286,12 +286,22 @@ Options: `ariaLabel`, `caption`, `srTable: false` (opt out of the hidden table).
 
 1. **JSON in, DOM out** — `render` only builds markup from data.
 2. **CSS owns paint** — heights, shapes, colors, motion.
-3. **No SVG / canvas / fallbacks** — modern Chromium-class CSS.
+3. **No SVG / canvas** — modern CSS paint, with `@supports` fallbacks.
 4. **Hand markup still works** — `render` is convenience, not required.
 
 ## Browser notes
 
-Requires modern CSS: typed `attr()`, `clip-path: shape()`, `border-shape: shape()`, `sibling-index()`, `sin()`, Interest Invokers for tips.
+Prefers modern CSS: typed `attr()`, `clip-path: shape()`, `border-shape: shape()`, `sibling-index()`, `sin()`, Interest Invokers for tips.
+
+When a feature is missing, CSS `@supports` switches to a fallback and a short status note is printed under the chart:
+
+| Feature | Fallback |
+| --- | --- |
+| `border-shape` | `clip-path: shape()` on the same path (fill follows the wedge; borders/shadows do not) |
+| `shape()` | Pie/gauge: `conic-gradient` + donut `mask`; line/radar: fill will not follow the path |
+| typed `attr()` | Inline `--v` copied from `data-v` |
+| `sibling-index()` | `:nth-child` stagger delays |
+| `corner-shape` | Plain `border-radius` (progressive enhancement, no note) |
 
 ## License
 
