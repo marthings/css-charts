@@ -735,6 +735,34 @@
   pointer-events: none;
 }
 
+/* Opt-in mark selection (selectable: true / data-selectable) */
+.cc-bar[data-selected] .cc-bar-fill,
+.cc-heat-cell[data-selected] {
+  box-shadow:
+    0 0 0 2px var(--cc-mark-bg),
+    0 0 0 4px var(--cc-series, var(--cc-accent));
+  filter: brightness(1.08);
+}
+
+.cc-line-dot[data-selected] {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--cc-series, var(--cc-accent)) 45%, transparent);
+  z-index: 3;
+}
+
+.cc-pie-slice[data-selected] {
+  filter: brightness(1.08);
+  z-index: 3;
+  transform: scale(1.03);
+}
+
+.cc-chart[data-has-selection] .cc-bar:not([data-selected]),
+.cc-chart[data-has-selection] .cc-pie-slice:not([data-selected]),
+.cc-chart[data-has-selection] .cc-line-dot:not([data-selected]),
+.cc-chart[data-has-selection] .cc-heat-cell:not([data-selected]):not(.cc-heat-cell--empty) {
+  opacity: 0.42;
+}
+
 /* ════════════════════════════════════════════════════════════════
    6. BAR CHART — simple / group / stack / horizontal
    ════════════════════════════════════════════════════════════════ */
