@@ -444,3 +444,15 @@ code {
 .home .preview-mini .section-heading {
   margin-bottom: 1.5rem;
 }
+
+.selection-status {
+  margin: 0.85rem 0 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--demo-page-border);
+  border-radius: 8px;
+  background: var(--demo-page-surface);
+  font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--cc-text);
+}
