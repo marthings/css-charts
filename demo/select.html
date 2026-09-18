@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Selection · css-charts</title>
+  <script>
+    (() => {
+      try {
+        const s = localStorage.getItem('css-charts-theme');
+        const pref = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = s === 'light' || s === 'dark' ? s : pref;
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../src/css-charts.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">css-charts</span>
+        <span class="brand-tag">select</span>
+      </a>
+      <nav class="nav" aria-label="Demo">
+        <a href="index.html">Home</a>
+        <a href="bar.html">Bar</a>
+        <a href="line.html">Line</a>
+        <a href="combo.html">Combo</a>
+        <a href="pie.html">Pie</a>
+        <a href="select.html" aria-current="page">Select</a>
+        <a href="theme.html">Theme</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" data-theme-state="dark">
+          <span class="theme-toggle-label">Dark</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="main">
+    <p class="eyebrow">Interactive · mark selection</p>
+    <h1 class="page-title">Select a mark</h1>
+    <p class="page-lede">
+      Opt in with <code>selectable: true</code>. Click or focus a bar, point, or slice,
+      then activate it. The chart instance exposes <code>select</code>,
+      <code>getSelection</code>, and <code>clearSelection</code>.
+    </p>
+
+    <section class="section">
+      <h2>Grouped bar</h2>
+      <p>Click a bar to select it. Click again to clear. Other marks dim.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">CssCharts.render · selectable</p>
+            <h2 class="cc-title">UV and PV</h2>
+          </div>
+          <button type="button" class="cc-btn cc-btn--ghost" id="clear-bar">Clear</button>
+        </header>
+        <div id="select-bar"></div>
+        <p class="selection-status" id="select-bar-status" role="status">No selection</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Pie</h2>
+      <p>Same API on slices. Payload includes label, value, and series token.</p>
+      <div class="cc-shell">
+        <header class="cc-toolbar">
+          <div>
+            <p class="cc-kicker">type: pie</p>
+            <h2 class="cc-title">Traffic by channel</h2>
+          </div>
+        </header>
+        <div id="select-pie"></div>
+        <p class="selection-status" id="select-pie-status" role="status">No selection</p>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <a href="bar.html">← Bar</a>
+      <a href="index.html">Home</a>
+      <a href="pie.html">Pie →</a>
+    </footer>
+  </main>
+
+  <script src="../src/css-charts.js"></script>
+  <script src="demo.js"></script>
+  <script>
+    function formatPayload(payload) {
+      if (!payload) return 'No selection';
+      const value = payload.value == null ? '—' : payload.value;
+      const series = payload.series ? payload.series + ' · ' : '';
+      return (payload.label || 'Mark') + ' — ' + series + value;
+    }
+
+    const barData = [
+      { name: 'A', uv: 4000, pv: 2400 },
+      { name: 'B', uv: 3000, pv: 1398 },
+      { name: 'C', uv: 2000, pv: 9800 },
+      { name: 'D', uv: 2780, pv: 3908 },
+      { name: 'E', uv: 1890, pv: 4800 },
+    ];
+
+    const barStatus = document.getElementById('select-bar-status');
+    const barChart = CssCharts.render(document.getElementById('select-bar'), {
+      type: 'bar',
+      data: barData,
+      series: [
+        { key: 'uv', label: 'UV' },
+        { key: 'pv', label: 'PV' },
+      ],
+      layout: 'group',
+      selectable: true,
+      ariaLabel: 'Selectable grouped bar chart of UV and PV',
+      caption: 'UV and PV',
+      onSelect: function (payload) {
+        barStatus.textContent = formatPayload(payload);
+      },
+    });
+
+    document.getElementById('clear-bar').addEventListener('click', function () {
+      barChart.clearSelection();
+    });
+
+    const pieStatus = document.getElementById('select-pie-status');
+    CssCharts.render(document.getElementById('select-pie'), {
+      type: 'pie',
+      data: [
+        { name: 'Organic', value: 42 },
+        { name: 'Paid', value: 28 },
+        { name: 'Referral', value: 18 },
+        { name: 'Social', value: 12 },
+      ],
+      selectable: true,
+      ariaLabel: 'Selectable pie chart of traffic by channel',
+      caption: 'Traffic by channel',
+      onSelect: function (payload) {
+        pieStatus.textContent = formatPayload(payload);
+      },
+    });
+  </script>
+</body>
+</html>

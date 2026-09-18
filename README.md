@@ -33,9 +33,12 @@ data (JSON / array)  ── CssCharts.render() ──►  DOM  ── CSS ──
     layout: 'group',       // bar: simple | group | stack | horizontal | range | waterfall
     max: 10000,            // optional; inferred if omitted
     tooltip: true,         // interestfor tips (default)
+    // selectable: true,  // click a mark; chart.select() / onSelect
   });
 </script>
 ```
+
+Public API sketch: [docs/api.md](./docs/api.md). Vanilla HTML/CSS/JS only — no frameworks, no SVG, no canvas, no chart engines.
 
 Line chart is the same call with `type: 'line'`:
 
@@ -87,6 +90,8 @@ CssCharts.render(el, {
 `series[].type` is `'bar'` or `'line'` (defaults with the chart: bar chart → bar, line chart → line). `series[].axis` is `'left'` unless you set `'right'`. Right-axis domain: `minRight` / `maxRight` (inferred if omitted). Alias: `renderCombo`.
 
 Aliases: `renderBar` / `renderLine` / `renderPie` / `renderCombo` (no need for `type`).
+
+A successful `render` returns a small instance: `el`, `select(query)`, `getSelection()`, `clearSelection()`, plus type-specific fields. Selection is **opt-in** (`selectable: true`) so existing charts stay hover/focus-only.
 
 ### Line modes
 
@@ -179,6 +184,8 @@ CssCharts.render(el, { type: 'bar', data: json, series: [{ key: 'uv' }] });
 | `startAngle` / `endAngle` | `-135` / `135` | gauge sweep, degrees, 0 at top clockwise |
 | `startKey` / `endKey` | `'start'` / `'end'` | on a series when `layout: 'range'` |
 | `valueKey` | `'value'` | gauge / heatmap cell value |
+| `selectable` | `false` | click/activate a mark to select it |
+| `onSelect` | none | `(payload \| null) => void`; also `cc-select` on the chart root |
 
 ## Features vs Recharts (bar & line)
 
@@ -216,6 +223,7 @@ Same as `npx serve . -l 8090`. Works on macOS, Windows, and Linux.
 | `demo/heatmap.html` | CSS grid heatmap |
 | `demo/radar.html` | Polar polygons |
 | `demo/theme.html` | **CSS-var theming** (Ocean, Aurora, Paper, Neon) |
+| `demo/select.html` | Click-to-select marks (`selectable`) |
 
 ## Theming (CSS variables)
 
