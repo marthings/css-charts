@@ -4,8 +4,28 @@
 
 Pure HTML/CSS **bar**, **line**, **combo**, **pie/donut**, **scatter**, **gauge**, **heatmap**, and **radar** charts (Recharts-inspired composition). No SVG, no canvas, no D3. Geometry uses modern CSS including `clip-path: shape()` (lines, radar) and `border-shape: shape()` (pie/gauge arcs), with `@supports` fallbacks when those features are missing.
 
+[Live demo](https://marthings.github.io/css-charts/demo/) · 8 chart types · 0 dependencies · MIT
+
 ```
 data (JSON / array)  ── CssCharts.render() ──►  DOM  ── CSS ──►  chart
+```
+
+## Install
+
+```bash
+npm install css-charts
+```
+
+```js
+import CssCharts from 'css-charts';
+import 'css-charts/css';
+```
+
+Or drop the files in with a script tag:
+
+```html
+<link rel="stylesheet" href="src/css-charts.css" />
+<script src="src/css-charts.js"></script>
 ```
 
 ## Quick start
@@ -297,11 +317,17 @@ Options: `ariaLabel`, `caption`, `srTable: false` (opt out of the hidden table).
 3. **No SVG / canvas** — modern CSS paint, with `@supports` fallbacks.
 4. **Hand markup still works** — `render` is convenience, not required.
 
-## Browser notes
+## Browser support
 
-Prefers modern CSS: typed `attr()`, `clip-path: shape()`, `border-shape: shape()`, `sibling-index()`, `sin()`, Interest Invokers for tips.
+| Surface | Chrome / Edge | Safari / Firefox |
+| --- | --- | --- |
+| Bar, pie/donut, gauge, scatter, heatmap | Full | CSS `@supports` fallbacks |
+| Line / area / radar path | `clip-path: shape()` | Dots render; the filled path needs `shape()` |
+| Tooltips | Native `interestfor` + `popover="hint"` | Call `CssCharts.polyfill()` (demos do this) |
 
-When a feature is missing, CSS `@supports` switches to a fallback and a short status note is printed under the chart:
+Prefers modern CSS: typed `attr()`, `clip-path: shape()`, `border-shape: shape()`, `sibling-index()`, Interest Invokers for tips.
+
+When a feature is missing, CSS `@supports` switches to a fallback. Set `fallbackNotes: true` to print developer status notes under the chart (off by default; demos opt in):
 
 | Feature | Fallback |
 | --- | --- |
@@ -310,6 +336,12 @@ When a feature is missing, CSS `@supports` switches to a fallback and a short st
 | typed `attr()` | Inline `--v` copied from `data-v` |
 | `sibling-index()` | `:nth-child` stagger delays |
 | `corner-shape` | Plain `border-radius` (progressive enhancement, no note) |
+
+## When not to use css-charts
+
+- Network / node-edge graphs, geo maps, or 3D scenes
+- High-frequency realtime streams or tens of thousands of points (prefer Canvas/WebGL)
+- Projects that require framework-owned chart components in the core package
 
 ## License
 
