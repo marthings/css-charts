@@ -56,8 +56,25 @@
     return SERIES_TOKENS[i % SERIES_TOKENS.length];
   }
 
+  /**
+   * Allow only CSS color-like tokens that cannot break out of style="".
+   * Rejects quotes, semicolons, angle brackets, and url()/expression().
+   */
+  function sanitizeCssColor(value) {
+    const raw = String(value).trim();
+    if (!raw || raw.length > 160) return '';
+    if (/["';<>\\]|url\s*\(|expression\s*\(|javascript:/i.test(raw)) {
+      return '';
+    }
+    if (!/^[a-zA-Z#][\w.%+\-/#(),\s]*$/.test(raw)) return '';
+    return raw;
+  }
+
   function seriesColorDecl(i, s) {
-    if (s && s.color) return '--cc-series: ' + String(s.color);
+    if (s && s.color != null && String(s.color).trim() !== '') {
+      const safe = sanitizeCssColor(s.color);
+      if (safe) return '--cc-series: ' + safe;
+    }
     return '--cc-series: var(--cc-' + seriesToken(i) + ')';
   }
 
@@ -620,7 +637,12 @@
   function normalizeData(data) {
     if (data == null) return [];
     if (typeof data === 'string') {
-      const parsed = JSON.parse(data);
+      let parsed;
+      try {
+        parsed = JSON.parse(data);
+      } catch (err) {
+        throw new TypeError('css-charts: data JSON string is not valid JSON');
+      }
       if (!Array.isArray(parsed)) {
         throw new TypeError('css-charts: data JSON must be an array of row objects');
       }
@@ -879,9 +901,6 @@
                 const interestfor = useTips
                   ? ' interestfor="' + escapeHtml(id) + '"'
                   : '';
-                const describedby = useTips
-                  ? ' aria-describedby="' + escapeHtml(id) + '"'
-                  : '';
                 return (
                   '<button type="button" class="cc-line-dot" data-series="' +
                   escapeHtml(s.key) +
@@ -898,7 +917,7 @@
                   ': ' +
                   escapeHtml(shown) +
                   '"' +
-                  describedby +
+                  
                   interestfor +
                   '></button>' +
                   label
@@ -963,14 +982,24 @@
 
   function hitsHtml(data, base, opts) {
     if (isSparkline(opts)) return '';
+    // Hit strips share category tips for pointer hover. Keep real buttons
+    // (interestfor) but out of tab order; do not wrap in aria-hidden.
     return (
-      '<div class="cc-hits" aria-hidden="true">' +
+      '<div class="cc-hits">' +
       data
         .map(function (row, i) {
           const id = base + '-c-' + i;
+          const name =
+            row && (row.name != null ? row.name : row[Object.keys(row)[0]]);
+          const label =
+            name != null && String(name) !== ''
+              ? escapeHtml(String(name))
+              : 'Category ' + (i + 1);
           return (
             '<button type="button" class="cc-hit" tabindex="-1" interestfor="' +
             escapeHtml(id) +
+            '" aria-label="' +
+            label +
             '" style="anchor-name: --' +
             id +
             '"></button>'
@@ -1271,7 +1300,6 @@
         );
         const shown = formatValue(s.value, opts, 'left');
         let interestfor = '';
-        let describedby = '';
         /* Geometry via --cc-slice-shape → border-shape (borders/shadows follow path).
            Not corner-shape (that only styles border-radius corners). */
         let style =
@@ -1294,7 +1322,6 @@
             }).tipHtml
           );
           interestfor = ' interestfor="' + escapeHtml(id) + '"';
-          describedby = ' aria-describedby="' + escapeHtml(id) + '"';
           style += '; anchor-name: --' + id;
         }
 
@@ -1315,7 +1342,7 @@
           ' (' +
           pct +
           '%)"' +
-          describedby +
+          
           interestfor +
           '></button>'
         );
@@ -1485,8 +1512,6 @@
       (useTips
         ? ' interestfor="' +
           escapeHtml(id) +
-          '" aria-describedby="' +
-          escapeHtml(id) +
           '"'
         : '') +
       '></button>';
@@ -1636,8 +1661,6 @@
             '"' +
             (useTips
               ? ' interestfor="' +
-                escapeHtml(id) +
-                '" aria-describedby="' +
                 escapeHtml(id) +
                 '"'
               : '') +
@@ -1794,7 +1817,7 @@
     const tipHtml =
       '<div id="' +
       escapeHtml(id) +
-      '" popover="hint" class="cc-tip" role="tooltip" style="position-anchor: --' +
+      '" popover="hint" class="cc-tip" style="position-anchor: --' +
       escapeHtml(id) +
       '">' +
       '<strong>' +
@@ -1888,9 +1911,6 @@
               interest = ' interestfor="' + escapeHtml(id) + '"';
               styleParts.push('anchor-name: --' + id);
             }
-            const describedby = useTips
-              ? ' aria-describedby="' + escapeHtml(id) + '"'
-              : '';
             return (
               '<button type="button" class="cc-bar" data-series="' +
               escapeHtml(s.key) +
@@ -1907,7 +1927,7 @@
               ': ' +
               escapeHtml(shown) +
               '"' +
-              describedby +
+              
               interest +
               '>' +
               '<span class="cc-bar-fill" aria-hidden="true"></span>' +
@@ -2036,9 +2056,6 @@
     const interest = useTips
       ? ' interestfor="' + escapeHtml(id) + '"'
       : '';
-    const describedby = useTips
-      ? ' aria-describedby="' + escapeHtml(id) + '"'
-      : '';
     const styleParts = [colorDecl].concat(
       typedAttrDecls(round2(v), round2(offset))
     );
@@ -2061,7 +2078,7 @@
       ': ' +
       escapeHtml(shown) +
       '"' +
-      describedby +
+      
       interest +
       '>' +
       '<span class="cc-bar-fill" aria-hidden="true"></span>' +
@@ -2518,9 +2535,6 @@
               interest = ' interestfor="' + escapeHtml(id) + '"';
               styleParts.push('anchor-name: --' + id);
             }
-            const describedby = useTips
-              ? ' aria-describedby="' + escapeHtml(id) + '"'
-              : '';
             return (
               '<button type="button" class="cc-bar" data-series="' +
               escapeHtml(s.key) +
@@ -2537,7 +2551,7 @@
               ': ' +
               escapeHtml(shown) +
               '"' +
-              describedby +
+              
               interest +
               '>' +
               '<span class="cc-bar-fill" aria-hidden="true"></span>' +
@@ -2916,8 +2930,6 @@
               (useTips
                 ? ' interestfor="' +
                   escapeHtml(id) +
-                  '" aria-describedby="' +
-                  escapeHtml(id) +
                   '"'
                 : '') +
               '></button>' +
@@ -3120,8 +3132,6 @@
                   (useTips
                     ? ' interestfor="' +
                       escapeHtml(id) +
-                      '" aria-describedby="' +
-                      escapeHtml(id) +
                       '"'
                     : '') +
                   '></button>'
@@ -3301,6 +3311,101 @@
     return true;
   }
 
+
+  /**
+   * Conditionally load Interest Invoker / Popover / CSS Anchor polyfills.
+   * Call from the host (demos call this before init). Never fetches during render().
+   * @param {{ interestfor?: string, popover?: string, anchor?: string }} [urls]
+   * @returns {Promise<{ interestfor: boolean, popover: boolean, anchor: boolean }>}
+   */
+  function polyfill(urls) {
+    const cfg = urls || {};
+    const interestUrl =
+      cfg.interestfor ||
+      'https://cdn.jsdelivr.net/npm/interestfor@1.0.7/interestfor.min.js';
+    const popoverUrl =
+      cfg.popover ||
+      'https://cdn.jsdelivr.net/npm/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js';
+    const anchorUrl =
+      cfg.anchor ||
+      'https://cdn.jsdelivr.net/npm/@oddbird/css-anchor-positioning@0.6.2/dist/css-anchor-positioning.js';
+
+    function needInterest() {
+      try {
+        return !Object.prototype.hasOwnProperty.call(
+          HTMLButtonElement.prototype,
+          'interestForElement'
+        );
+      } catch (err) {
+        return true;
+      }
+    }
+
+    function needPopover() {
+      try {
+        return !('popover' in HTMLElement.prototype);
+      } catch (err) {
+        return true;
+      }
+    }
+
+    function needAnchor() {
+      try {
+        return !('anchorName' in document.documentElement.style);
+      } catch (err) {
+        return true;
+      }
+    }
+
+    function loadScript(src) {
+      return new Promise(function (resolve, reject) {
+        const existing = document.querySelector(
+          'script[data-css-charts-polyfill="' + src + '"]'
+        );
+        if (existing) {
+          if (existing.dataset.loaded === '1') return resolve();
+          existing.addEventListener('load', function () {
+            resolve();
+          });
+          existing.addEventListener('error', function () {
+            reject(new Error('css-charts: failed to load ' + src));
+          });
+          return;
+        }
+        const el = document.createElement('script');
+        el.src = src;
+        el.async = true;
+        el.dataset.cssChartsPolyfill = src;
+        el.onload = function () {
+          el.dataset.loaded = '1';
+          resolve();
+        };
+        el.onerror = function () {
+          reject(new Error('css-charts: failed to load ' + src));
+        };
+        document.head.appendChild(el);
+      });
+    }
+
+    const jobs = [];
+    const loaded = { interestfor: false, popover: false, anchor: false };
+    if (needInterest()) {
+      loaded.interestfor = true;
+      jobs.push(loadScript(interestUrl));
+    }
+    if (needPopover()) {
+      loaded.popover = true;
+      jobs.push(loadScript(popoverUrl));
+    }
+    if (needAnchor()) {
+      loaded.anchor = true;
+      jobs.push(loadScript(anchorUrl));
+    }
+    return Promise.all(jobs).then(function () {
+      return loaded;
+    });
+  }
+
   return {
     /** JSON/array → DOM (primary API) */
     render: render,
@@ -3315,6 +3420,8 @@
     pieWedgeShape: pieWedgeShape,
     normalizeData: normalizeData,
     init: init,
+    polyfill: polyfill,
+    sanitizeCssColor: sanitizeCssColor,
     supportsTypedAttr: supportsTypedAttr,
     attachFallbacks: attachFallbacks,
     wireShellControls: wireShellControls,
