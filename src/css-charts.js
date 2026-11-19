@@ -219,9 +219,66 @@
     return ticks;
   }
 
+  var CHART_DATA_ATTRS = [
+    'data-type',
+    'data-layout',
+    'data-donut',
+    'data-stack-type',
+    'data-axis-right',
+    'data-curve',
+    'data-dots',
+    'data-sparkline',
+    'data-y-title',
+    'data-labels',
+    'data-x',
+    'data-selectable',
+    'data-has-selection',
+    'data-fallback-notes',
+  ];
+
+  var CHART_STYLE_VARS = [
+    '--cc-max',
+    '--cc-min',
+    '--cc-max-right',
+    '--cc-min-right',
+    '--cc-inner',
+    '--cc-pie-size',
+    '--cc-h',
+    '--cc-gauge-value',
+  ];
+
   function clearChart(el) {
-    if (el) el.innerHTML = '';
+    if (!el) return null;
+    el.innerHTML = '';
+    CHART_DATA_ATTRS.forEach(function (name) {
+      el.removeAttribute(name);
+    });
+    CHART_STYLE_VARS.forEach(function (name) {
+      el.style.removeProperty(name);
+    });
+    delete el.dataset.ccSelectBound;
+    delete el._ccSelectOpts;
     return null;
+  }
+
+  function destroyChart(el) {
+    if (!el) return null;
+    clearSelectedMarksSafe(el);
+    return clearChart(el);
+  }
+
+  function clearSelectedMarksSafe(chart) {
+    if (!chart || !chart.querySelector) return;
+    chart.removeAttribute('data-has-selection');
+    Array.prototype.forEach.call(
+      chart.querySelectorAll('[data-selected]'),
+      function (mark) {
+        mark.removeAttribute('data-selected');
+        if (mark.hasAttribute('aria-pressed')) {
+          mark.setAttribute('aria-pressed', 'false');
+        }
+      }
+    );
   }
 
   function cssSupports(property, value) {
@@ -275,8 +332,10 @@
     );
   }
 
-  function attachFallbacks(el, needs) {
+  function attachFallbacks(el, needs, opts) {
     if (!el) return;
+    // Opt-in only — production hosts should not show developer notes.
+    if (!(opts && opts.fallbackNotes === true)) return;
     var html = fallbackNotesHtml(needs);
     if (html) el.insertAdjacentHTML('beforeend', html);
   }
@@ -1030,7 +1089,10 @@
    *   ticks?: number,
    *   donut?: boolean,
    *   innerRadius?: number,
+   *   selectable?: boolean,
+   *   onSelect?: function,
    * }} opts
+   * @returns {{ el: HTMLElement, select: function, getSelection: function, clearSelection: function }|null}
    */
   function render(el, opts) {
     if (!el || !opts) return null;
@@ -1423,7 +1485,7 @@
       tips;
 
     bindLegend(el);
-    attachFallbacks(el, ['border-shape', 'shape']);
+    attachFallbacks(el, ['border-shape', 'shape'], opts);
     const plot = el.querySelector('.cc-pie-plot');
     if (plot && typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
@@ -1574,7 +1636,7 @@
       '</div></div>' +
       tips;
 
-    attachFallbacks(el, ['border-shape', 'shape']);
+    attachFallbacks(el, ['border-shape', 'shape'], opts);
     const plot = el.querySelector('.cc-pie-plot');
     if (plot && typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
@@ -2028,7 +2090,7 @@
 
     const plot = el.querySelector('.cc-plot');
     bindLegend(el);
-    attachFallbacks(el, ['typed-attr', 'sibling-index']);
+    attachFallbacks(el, ['typed-attr', 'sibling-index'], opts);
     if (typeof document !== 'undefined') {
       wireShellControls((el.closest && el.closest('.cc-shell')) || document);
     }
@@ -2221,7 +2283,7 @@
 
     const plot = el.querySelector('.cc-plot');
     bindLegend(el);
-    attachFallbacks(el, ['typed-attr', 'sibling-index']);
+    attachFallbacks(el, ['typed-attr', 'sibling-index'], opts);
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
         staggerPlot(plot);
@@ -2366,7 +2428,7 @@
       tips;
 
     const plot = el.querySelector('.cc-plot');
-    attachFallbacks(el, ['typed-attr', 'sibling-index']);
+    attachFallbacks(el, ['typed-attr', 'sibling-index'], opts);
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
         staggerPlot(plot);
@@ -2664,7 +2726,7 @@
 
     const plot = el.querySelector('.cc-plot');
     bindLegend(el);
-    attachFallbacks(el, ['typed-attr', 'shape', 'sibling-index']);
+    attachFallbacks(el, ['typed-attr', 'shape', 'sibling-index'], opts);
     if (typeof document !== 'undefined') {
       wireShellControls((el.closest && el.closest('.cc-shell')) || document);
     }
@@ -2808,7 +2870,7 @@
       tips;
 
     bindLegend(el);
-    attachFallbacks(el, ['shape']);
+    attachFallbacks(el, ['shape'], opts);
     return { max: max, el: el };
   }
 
@@ -3192,7 +3254,7 @@
       tips;
 
     bindLegend(el);
-    attachFallbacks(el, ['shape']);
+    attachFallbacks(el, ['shape'], opts);
     return { el: el, min: min, max: max };
   }
 
@@ -3281,6 +3343,192 @@
     });
   }
 
+  var MARK_SELECTOR = '.cc-bar, .cc-line-dot, .cc-pie-slice, .cc-heat-cell';
+
+  function isSelectableMark(mark) {
+    if (!mark || !mark.classList) return false;
+    if (mark.closest && mark.closest('.cc-legend')) return false;
+    if (mark.classList.contains('cc-gauge-track')) return false;
+    if (mark.classList.contains('cc-heat-cell--empty')) return false;
+    return true;
+  }
+
+  function collectMarks(chart) {
+    const list = [];
+    chart.querySelectorAll(MARK_SELECTOR).forEach(function (mark) {
+      if (isSelectableMark(mark)) list.push(mark);
+    });
+    return list;
+  }
+
+  function markPayload(chart, mark) {
+    const series = mark.getAttribute('data-series');
+    const label = mark.getAttribute('data-label');
+    let raw = mark.getAttribute('data-v');
+    if (raw == null || raw === '') raw = mark.getAttribute('data-val');
+    let index = -1;
+    const dataIndex = mark.getAttribute('data-index');
+    if (dataIndex != null && dataIndex !== '') {
+      index = Number(dataIndex);
+      if (!Number.isFinite(index)) index = -1;
+    } else {
+      const cat = mark.closest('.cc-cat');
+      if (cat && cat.parentElement) {
+        const cats = [];
+        Array.prototype.forEach.call(cat.parentElement.children, function (node) {
+          if (node.classList && node.classList.contains('cc-cat')) cats.push(node);
+        });
+        index = cats.indexOf(cat);
+      } else {
+        index = collectMarks(chart).indexOf(mark);
+      }
+    }
+    return {
+      el: mark,
+      series: series,
+      label: label,
+      value: rawNum(raw),
+      index: index,
+      type: chart.getAttribute('data-type') || null,
+    };
+  }
+
+  function clearSelectedMarks(chart) {
+    chart.removeAttribute('data-has-selection');
+    collectMarks(chart).forEach(function (mark) {
+      mark.removeAttribute('data-selected');
+      if (mark.hasAttribute('aria-pressed')) {
+        mark.setAttribute('aria-pressed', 'false');
+      }
+    });
+  }
+
+  function applySelectedMark(chart, mark) {
+    clearSelectedMarks(chart);
+    if (!mark || !chart.contains(mark)) return null;
+    mark.setAttribute('data-selected', '');
+    if (mark.tagName === 'BUTTON') mark.setAttribute('aria-pressed', 'true');
+    chart.setAttribute('data-has-selection', '');
+    return markPayload(chart, mark);
+  }
+
+  function findMark(chart, query) {
+    if (query == null) return null;
+    if (query.nodeType === 1) return isSelectableMark(query) ? query : null;
+    const marks = collectMarks(chart);
+    if (typeof query === 'number') {
+      for (let n = 0; n < marks.length; n++) {
+        if (marks[n].getAttribute('data-index') === String(query)) return marks[n];
+      }
+      return marks[query] || null;
+    }
+    if (typeof query !== 'object') return null;
+    if (query.index != null && query.series == null && query.label == null) {
+      for (let n = 0; n < marks.length; n++) {
+        if (marks[n].getAttribute('data-index') === String(query.index)) {
+          return marks[n];
+        }
+      }
+    }
+    let i;
+    let seen = 0;
+    for (i = 0; i < marks.length; i++) {
+      const seriesOk =
+        query.series == null ||
+        marks[i].getAttribute('data-series') === String(query.series);
+      const labelOk =
+        query.label == null ||
+        marks[i].getAttribute('data-label') === String(query.label);
+      if (!seriesOk || !labelOk) continue;
+      if (query.index == null || query.index === seen) return marks[i];
+      seen += 1;
+    }
+    return null;
+  }
+
+  function emitSelect(chart, opts, payload) {
+    if (opts && typeof opts.onSelect === 'function') {
+      try {
+        opts.onSelect(payload);
+      } catch (err) {
+        /* consumer errors should not break the chart */
+      }
+    }
+    if (typeof CustomEvent === 'function') {
+      chart.dispatchEvent(
+        new CustomEvent('cc-select', { bubbles: true, detail: payload })
+      );
+    }
+  }
+
+  function bindSelection(chart, opts) {
+    chart._ccSelectOpts = opts || {};
+    if (opts && opts.selectable) chart.setAttribute('data-selectable', '');
+    else chart.removeAttribute('data-selectable');
+    if (opts && opts.selectable) {
+      collectMarks(chart).forEach(function (mark) {
+        if (mark.tagName === 'BUTTON' && !mark.hasAttribute('aria-pressed')) {
+          mark.setAttribute('aria-pressed', 'false');
+        }
+      });
+    }
+    if (chart.dataset.ccSelectBound) return;
+    chart.dataset.ccSelectBound = '1';
+    chart.addEventListener('click', function (e) {
+      const current = chart._ccSelectOpts || {};
+      if (!current.selectable) return;
+      const mark =
+        e.target && e.target.closest
+          ? e.target.closest(MARK_SELECTOR)
+          : null;
+      if (!mark || !chart.contains(mark) || !isSelectableMark(mark)) return;
+      const already = mark.hasAttribute('data-selected');
+      const payload = applySelectedMark(chart, already ? null : mark);
+      emitSelect(chart, current, payload);
+    });
+  }
+
+  /**
+   * Shared instance API on every successful render().
+   * Click-to-select is opt-in via opts.selectable.
+   */
+
+  function stampMarkIndexes(chart) {
+    collectMarks(chart).forEach(function (mark, i) {
+      mark.setAttribute('data-index', String(i));
+    });
+  }
+  function attachChartApi(el, opts, result) {
+    stampMarkIndexes(el);
+    bindSelection(el, opts);
+    const api = Object.assign({ el: el }, result || {});
+    api.getSelection = function () {
+      const mark = el.querySelector(MARK_SELECTOR + '[data-selected]');
+      return mark && isSelectableMark(mark) ? markPayload(el, mark) : null;
+    };
+    api.select = function (query) {
+      const mark = query == null ? null : findMark(el, query);
+      const payload = applySelectedMark(el, mark);
+      emitSelect(el, el._ccSelectOpts || opts, payload);
+      return payload;
+    };
+    api.clearSelection = function () {
+      return api.select(null);
+    };
+    api.destroy = function () {
+      return destroyChart(el);
+    };
+    return api;
+  }
+
+  function withChartApi(renderFn) {
+    return function (el, opts) {
+      const result = renderFn(el, opts);
+      if (!el || result == null) return result;
+      return attachChartApi(el, opts || {}, result);
+    };
+  }
+
   function init(root, opts) {
     const scope = root || document;
     const barOpts = opts && opts.bar;
@@ -3304,6 +3552,11 @@
 
     scope.querySelectorAll('.cc-bar-legacy').forEach(function (el) {
       bindBarLegacy(el, barOpts);
+    });
+
+    scope.querySelectorAll('.cc-chart[data-selectable]').forEach(function (el) {
+      if (el.dataset.ccSelectBound) return;
+      attachChartApi(el, { selectable: true }, { el: el });
     });
 
     wireShellControls(scope);
@@ -3408,15 +3661,15 @@
 
   return {
     /** JSON/array → DOM (primary API) */
-    render: render,
-    renderBar: renderBar,
-    renderLine: renderLine,
-    renderPie: renderPie,
-    renderCombo: renderCombo,
-    renderScatter: renderScatter,
-    renderGauge: renderGauge,
-    renderHeatmap: renderHeatmap,
-    renderRadar: renderRadar,
+    render: withChartApi(render),
+    renderBar: withChartApi(renderBar),
+    renderLine: withChartApi(renderLine),
+    renderPie: withChartApi(renderPie),
+    renderCombo: withChartApi(renderCombo),
+    renderScatter: withChartApi(renderScatter),
+    renderGauge: withChartApi(renderGauge),
+    renderHeatmap: withChartApi(renderHeatmap),
+    renderRadar: withChartApi(renderRadar),
     pieWedgeShape: pieWedgeShape,
     normalizeData: normalizeData,
     init: init,

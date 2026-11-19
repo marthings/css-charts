@@ -148,6 +148,14 @@
     } catch (err) {
       console.warn('[css-charts] polyfill load failed', err);
     }
+    // Demos opt into developer fallback notes; library default stays off.
+    if (typeof CssCharts.render === 'function') {
+      const render = CssCharts.render.bind(CssCharts);
+      CssCharts.render = function (el, opts) {
+        const next = Object.assign({ fallbackNotes: true }, opts || {});
+        return render(el, next);
+      };
+    }
     CssCharts.init();
   }
 
