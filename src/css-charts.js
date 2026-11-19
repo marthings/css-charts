@@ -219,9 +219,66 @@
     return ticks;
   }
 
+  var CHART_DATA_ATTRS = [
+    'data-type',
+    'data-layout',
+    'data-donut',
+    'data-stack-type',
+    'data-axis-right',
+    'data-curve',
+    'data-dots',
+    'data-sparkline',
+    'data-y-title',
+    'data-labels',
+    'data-x',
+    'data-selectable',
+    'data-has-selection',
+    'data-fallback-notes',
+  ];
+
+  var CHART_STYLE_VARS = [
+    '--cc-max',
+    '--cc-min',
+    '--cc-max-right',
+    '--cc-min-right',
+    '--cc-inner',
+    '--cc-pie-size',
+    '--cc-h',
+    '--cc-gauge-value',
+  ];
+
   function clearChart(el) {
-    if (el) el.innerHTML = '';
+    if (!el) return null;
+    el.innerHTML = '';
+    CHART_DATA_ATTRS.forEach(function (name) {
+      el.removeAttribute(name);
+    });
+    CHART_STYLE_VARS.forEach(function (name) {
+      el.style.removeProperty(name);
+    });
+    delete el.dataset.ccSelectBound;
+    delete el._ccSelectOpts;
     return null;
+  }
+
+  function destroyChart(el) {
+    if (!el) return null;
+    clearSelectedMarksSafe(el);
+    return clearChart(el);
+  }
+
+  function clearSelectedMarksSafe(chart) {
+    if (!chart || !chart.querySelector) return;
+    chart.removeAttribute('data-has-selection');
+    Array.prototype.forEach.call(
+      chart.querySelectorAll('[data-selected]'),
+      function (mark) {
+        mark.removeAttribute('data-selected');
+        if (mark.hasAttribute('aria-pressed')) {
+          mark.setAttribute('aria-pressed', 'false');
+        }
+      }
+    );
   }
 
   function cssSupports(property, value) {
@@ -275,8 +332,10 @@
     );
   }
 
-  function attachFallbacks(el, needs) {
+  function attachFallbacks(el, needs, opts) {
     if (!el) return;
+    // Opt-in only — production hosts should not show developer notes.
+    if (!(opts && opts.fallbackNotes === true)) return;
     var html = fallbackNotesHtml(needs);
     if (html) el.insertAdjacentHTML('beforeend', html);
   }
@@ -1426,7 +1485,7 @@
       tips;
 
     bindLegend(el);
-    attachFallbacks(el, ['border-shape', 'shape']);
+    attachFallbacks(el, ['border-shape', 'shape'], opts);
     const plot = el.querySelector('.cc-pie-plot');
     if (plot && typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
@@ -1577,7 +1636,7 @@
       '</div></div>' +
       tips;
 
-    attachFallbacks(el, ['border-shape', 'shape']);
+    attachFallbacks(el, ['border-shape', 'shape'], opts);
     const plot = el.querySelector('.cc-pie-plot');
     if (plot && typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
@@ -2031,7 +2090,7 @@
 
     const plot = el.querySelector('.cc-plot');
     bindLegend(el);
-    attachFallbacks(el, ['typed-attr', 'sibling-index']);
+    attachFallbacks(el, ['typed-attr', 'sibling-index'], opts);
     if (typeof document !== 'undefined') {
       wireShellControls((el.closest && el.closest('.cc-shell')) || document);
     }
@@ -2224,7 +2283,7 @@
 
     const plot = el.querySelector('.cc-plot');
     bindLegend(el);
-    attachFallbacks(el, ['typed-attr', 'sibling-index']);
+    attachFallbacks(el, ['typed-attr', 'sibling-index'], opts);
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
         staggerPlot(plot);
@@ -2369,7 +2428,7 @@
       tips;
 
     const plot = el.querySelector('.cc-plot');
-    attachFallbacks(el, ['typed-attr', 'sibling-index']);
+    attachFallbacks(el, ['typed-attr', 'sibling-index'], opts);
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(function () {
         staggerPlot(plot);
@@ -2667,7 +2726,7 @@
 
     const plot = el.querySelector('.cc-plot');
     bindLegend(el);
-    attachFallbacks(el, ['typed-attr', 'shape', 'sibling-index']);
+    attachFallbacks(el, ['typed-attr', 'shape', 'sibling-index'], opts);
     if (typeof document !== 'undefined') {
       wireShellControls((el.closest && el.closest('.cc-shell')) || document);
     }
@@ -2811,7 +2870,7 @@
       tips;
 
     bindLegend(el);
-    attachFallbacks(el, ['shape']);
+    attachFallbacks(el, ['shape'], opts);
     return { max: max, el: el };
   }
 
@@ -3195,7 +3254,7 @@
       tips;
 
     bindLegend(el);
-    attachFallbacks(el, ['shape']);
+    attachFallbacks(el, ['shape'], opts);
     return { el: el, min: min, max: max };
   }
 
@@ -3307,16 +3366,22 @@
     const label = mark.getAttribute('data-label');
     let raw = mark.getAttribute('data-v');
     if (raw == null || raw === '') raw = mark.getAttribute('data-val');
-    const cat = mark.closest('.cc-cat');
     let index = -1;
-    if (cat && cat.parentElement) {
-      const cats = [];
-      Array.prototype.forEach.call(cat.parentElement.children, function (node) {
-        if (node.classList && node.classList.contains('cc-cat')) cats.push(node);
-      });
-      index = cats.indexOf(cat);
+    const dataIndex = mark.getAttribute('data-index');
+    if (dataIndex != null && dataIndex !== '') {
+      index = Number(dataIndex);
+      if (!Number.isFinite(index)) index = -1;
     } else {
-      index = collectMarks(chart).indexOf(mark);
+      const cat = mark.closest('.cc-cat');
+      if (cat && cat.parentElement) {
+        const cats = [];
+        Array.prototype.forEach.call(cat.parentElement.children, function (node) {
+          if (node.classList && node.classList.contains('cc-cat')) cats.push(node);
+        });
+        index = cats.indexOf(cat);
+      } else {
+        index = collectMarks(chart).indexOf(mark);
+      }
     }
     return {
       el: mark,
@@ -3351,8 +3416,20 @@
     if (query == null) return null;
     if (query.nodeType === 1) return isSelectableMark(query) ? query : null;
     const marks = collectMarks(chart);
-    if (typeof query === 'number') return marks[query] || null;
+    if (typeof query === 'number') {
+      for (let n = 0; n < marks.length; n++) {
+        if (marks[n].getAttribute('data-index') === String(query)) return marks[n];
+      }
+      return marks[query] || null;
+    }
     if (typeof query !== 'object') return null;
+    if (query.index != null && query.series == null && query.label == null) {
+      for (let n = 0; n < marks.length; n++) {
+        if (marks[n].getAttribute('data-index') === String(query.index)) {
+          return marks[n];
+        }
+      }
+    }
     let i;
     let seen = 0;
     for (i = 0; i < marks.length; i++) {
@@ -3415,7 +3492,14 @@
    * Shared instance API on every successful render().
    * Click-to-select is opt-in via opts.selectable.
    */
+
+  function stampMarkIndexes(chart) {
+    collectMarks(chart).forEach(function (mark, i) {
+      mark.setAttribute('data-index', String(i));
+    });
+  }
   function attachChartApi(el, opts, result) {
+    stampMarkIndexes(el);
     bindSelection(el, opts);
     const api = Object.assign({ el: el }, result || {});
     api.getSelection = function () {
@@ -3430,6 +3514,9 @@
     };
     api.clearSelection = function () {
       return api.select(null);
+    };
+    api.destroy = function () {
+      return destroyChart(el);
     };
     return api;
   }

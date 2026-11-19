@@ -21,6 +21,7 @@ Writes chart markup into `element`. CSS paints it.
 | `layout` | auto | Bar: `simple` \| `group` \| `stack` \| `horizontal` \| `range` \| `waterfall` |
 | `selectable` | `false` | Click or keyboard-activate a mark to select it |
 | `onSelect` | none | `(payload \| null) => void` when selection changes |
+| `fallbackNotes` | `false` | When `true`, append developer `@supports` notes under the chart (demos opt in) |
 
 Aliases (same options, no `type` needed): `renderBar`, `renderLine`, `renderPie`, `renderCombo`, `renderScatter`, `renderGauge`, `renderHeatmap`, `renderRadar`.
 
@@ -36,10 +37,13 @@ A successful `render` returns an object that always includes:
   select(query),      // mark element | index | { series, label, index? } | null
   getSelection(),     // payload or null
   clearSelection(),   // same as select(null)
+  destroy(),          // clear DOM, selection listeners, and chart data-* / CSS vars
 }
 ```
 
 Plus type-specific fields (`max`, `stagger`, `slices`, …).
+
+Marks get a stable `data-index` (0-based among selectable marks). Prefer `select({ index })` or `select(n)`.
 
 Selection payload:
 
@@ -49,7 +53,7 @@ Selection payload:
   series,   // series key, if present
   label,    // category / slice label
   value,    // numeric value or null
-  index,    // category index (bars) or mark index
+  index,    // data-index on the mark
   type,     // chart type
 }
 ```
