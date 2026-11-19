@@ -321,8 +321,9 @@
   position-try-fallbacks: flip-block, flip-inline;
 }
 
-.cc-tip:popover-open,
-.cc-tip:open {
+/* :is() keeps the whole rule valid when :popover-open is unknown;
+   .\:popover-open matches @oddbird/popover-polyfill. */
+.cc-tip:is(:popover-open, :open, .\:popover-open) {
   opacity: 1;
 }
 
@@ -407,10 +408,15 @@
 .cc-line-dot,
 .cc-bar-col,
 .cc-pie-slice,
-.cc-heat-cell {
+.cc-heat-cell,
+.cc-hit {
   interest-delay: 0s;
   interest-show-delay: 0s;
   interest-hide-delay: 0.12s;
+  /* Custom properties for interestfor polyfills */
+  --interest-delay: 0s;
+  --interest-show-delay: 0s;
+  --interest-hide-delay: 0.12s;
 }
 
 /* ════════════════════════════════════════════════════════════════

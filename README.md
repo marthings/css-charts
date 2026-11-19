@@ -273,7 +273,7 @@ Live demos: [demo/theme.html](./demo/theme.html) — Ocean, Aurora, Paper, Neon 
 | Keyboard | Bars & line points are real `<button>`s |
 | Focus visible | 2px accent outline + series ring (2.4.7) |
 | Target size | Line dots use ≥24×24px hit area; legend buttons min 24px (2.5.8) |
-| Tips | `interestfor` + `role="tooltip"` + `aria-describedby` |
+| Tips | `interestfor` + `popover="hint"` (native AT wiring; call `CssCharts.polyfill()` when needed) |
 | Not color alone | Series name in `aria-label` and legend text (1.4.1) |
 | Motion | `prefers-reduced-motion` disables stagger / transitions |
 | Decorative axes | `aria-hidden` on grid / tick chrome |

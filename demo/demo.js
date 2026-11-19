@@ -139,7 +139,17 @@
 
   initSupportBanner();
 
-  if (typeof CssCharts !== 'undefined') {
+  async function boot() {
+    if (typeof CssCharts === 'undefined') return;
+    try {
+      if (typeof CssCharts.polyfill === 'function') {
+        await CssCharts.polyfill();
+      }
+    } catch (err) {
+      console.warn('[css-charts] polyfill load failed', err);
+    }
     CssCharts.init();
   }
+
+  boot();
 })();
