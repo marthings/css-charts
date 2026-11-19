@@ -1,21 +1,51 @@
 {
   "name": "css-charts",
-  "version": "0.5.0",
-  "description": "JSON → DOM charts (bar, line, combo, pie). Pure HTML/CSS paint — no SVG, no canvas. CssCharts.render() builds the markup from data.",
+  "version": "0.1.0",
+  "description": "JSON → DOM charts (bar, line, combo, pie, scatter, gauge, heatmap, radar). Pure HTML/CSS paint — no SVG, no canvas, zero dependencies.",
   "license": "MIT",
+  "author": "Martin Berggren",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marthings/css-charts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/marthings/css-charts/issues"
+  },
+  "homepage": "https://marthings.github.io/css-charts/demo/",
   "keywords": [
     "css",
     "charts",
     "bar-chart",
     "line-chart",
     "pie-chart",
+    "scatter",
+    "gauge",
+    "heatmap",
+    "radar",
     "html",
-    "data-visualization"
+    "data-visualization",
+    "vanilla-js",
+    "zero-dependencies",
+    "no-svg",
+    "accessibility",
+    "modern-css"
   ],
+  "type": "commonjs",
   "main": "src/css-charts.js",
+  "module": "src/css-charts.mjs",
+  "types": "src/css-charts.d.ts",
   "style": "src/css-charts.css",
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
-    ".": "./src/css-charts.js",
+    ".": {
+      "types": "./src/css-charts.d.ts",
+      "import": "./src/css-charts.mjs",
+      "require": "./src/css-charts.js",
+      "default": "./src/css-charts.js"
+    },
+    "./css": "./src/css-charts.css",
     "./css-charts.css": "./src/css-charts.css",
     "./css-charts.js": "./src/css-charts.js"
   },
@@ -23,11 +53,13 @@
     "src/",
     "docs/",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "start": "npx --yes serve . -l 8090",
-    "serve": "npx --yes serve . -l 8090"
+    "serve": "npx --yes serve . -l 8090",
+    "test": "node --test test/*.test.js"
   },
   "devDependencies": {
     "serve": "^14.2.4"
